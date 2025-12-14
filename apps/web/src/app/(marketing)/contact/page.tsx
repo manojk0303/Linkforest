@@ -4,7 +4,7 @@ import { siteConfig } from '@/lib/site-config';
 
 export const metadata: Metadata = {
   title: 'Contact us',
-  description: `Get in touch with the ${siteConfig.name} team. We're here to help and answer any question you might have.`,
+  description: `Get in touch with the ${siteConfig.name} team. We are here to help and answer any question you might have.`,
 };
 
 export default function ContactPage() {
@@ -29,7 +29,7 @@ export default function ContactPage() {
                 <div className="mt-4 space-y-4">
                   <div>
                     <p className="text-muted-foreground text-sm">Email</p>
-                    <p className="font-medium">hello@linkpop.com</p>
+                    <p className="font-medium">hello@linkforest.com</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-sm">Response time</p>
@@ -44,19 +44,19 @@ export default function ContactPage() {
                   <li>
                     • Help Center:{' '}
                     <a href="/help" className="text-primary hover:underline">
-                      linkpop.com/help
+                      linkforest.com/help
                     </a>
                   </li>
                   <li>
                     • Community:{' '}
                     <a href="/community" className="text-primary hover:underline">
-                      community.linkpop.com
+                      community.linkforest.com
                     </a>
                   </li>
                   <li>
                     • Status:{' '}
                     <a href="/status" className="text-primary hover:underline">
-                      status.linkpop.com
+                      status.linkforest.com
                     </a>
                   </li>
                 </ul>

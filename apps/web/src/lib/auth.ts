@@ -110,9 +110,9 @@ export const authOptions: NextAuthOptions = {
 
         if (dbUser) {
           token.id = dbUser.id;
-          token.email = dbUser.email;
-          token.name = dbUser.name;
-          token.image = dbUser.image;
+          token.email = dbUser.email || '';
+          token.name = dbUser.name || '';
+          token.image = dbUser.image || '';
           token.role = dbUser.role;
           token.status = dbUser.status;
         }

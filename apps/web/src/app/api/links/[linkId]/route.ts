@@ -39,7 +39,7 @@ export async function PATCH(request: Request, { params }: { params: { linkId: st
         url: result.data.url,
         status: result.data.status,
         position: result.data.position,
-        metadata: result.data.metadata,
+        metadata: result.data.metadata as any,
       },
       select: {
         id: true,

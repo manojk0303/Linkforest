@@ -139,7 +139,13 @@ export default async function DashboardPage({
             <h1 className="text-3xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">Manage your public profile and links</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <a href="/dashboard/analytics">Analytics</a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a href={`/dashboard/profiles/${profile.id}/design`}>Design</a>
+            </Button>
             <Button variant="outline" asChild>
               <a href={`/${profile.slug}`} target="_blank" rel="noreferrer">
                 View Public Page
