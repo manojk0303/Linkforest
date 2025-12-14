@@ -152,7 +152,7 @@ export default function PrivacyPage() {
               <div className="text-muted-foreground mt-6 space-y-4">
                 <p>
                   If you have any questions about this Privacy Policy, please contact us at
-                  privacy@linkpop.com or through our{' '}
+                  privacy@linkforest.com or through our{' '}
                   <a href="/contact" className="text-primary hover:underline">
                     contact form
                   </a>

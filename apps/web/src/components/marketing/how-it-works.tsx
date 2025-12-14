@@ -22,7 +22,7 @@ export function HowItWorks({ steps, className }: HowItWorksProps) {
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">How it works</h2>
           <p className="text-muted-foreground mt-6 text-lg leading-8">
-            Get started with Linkpop in just a few simple steps.
+            Get started with Linkforest in just a few simple steps.
           </p>
         </div>
         <div className="mx-auto mt-16 max-w-4xl">

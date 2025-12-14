@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 const resources = [
   {
     title: 'Getting Started Guide',
-    description: 'Complete walkthrough of setting up your first Linkpop page.',
+    description: 'Complete walkthrough of setting up your first Linkforest page.',
     href: '/resources/getting-started',
     category: 'Tutorial',
   },
@@ -29,7 +29,7 @@ const resources = [
   },
   {
     title: 'Social Media Integration',
-    description: 'Maximizing your social media presence with Linkpop.',
+    description: 'Maximizing your social media presence with Linkforest.',
     href: '/resources/social-media',
     category: 'Marketing',
   },

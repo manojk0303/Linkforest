@@ -27,7 +27,7 @@ export function Testimonials({ testimonials, className }: TestimonialsProps) {
           </h2>
           <p className="text-muted-foreground mt-6 text-lg leading-8">
             See what our community of creators, influencers, and businesses have to say about
-            Linkpop.
+            Linkforest.
           </p>
         </div>
         <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">

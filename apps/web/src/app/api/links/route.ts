@@ -114,7 +114,7 @@ export async function POST(request: Request) {
         url: result.data.url,
         status: result.data.status ?? 'ACTIVE',
         position: nextPosition,
-        metadata: result.data.metadata ?? {},
+        metadata: (result.data.metadata ?? {}) as any,
       },
       select: {
         id: true,

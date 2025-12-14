@@ -20,7 +20,7 @@ export function FeatureGrid({ features, className }: FeatureGridProps) {
   const displayFeatures = features || siteConfig.features;
 
   const getIcon = (iconName: string): LucideIcon => {
-    const IconComponent = (Icons as any)[iconName] || Icons.Circle;
+    const IconComponent = (Icons as any)[iconName] || Icons.Link;
     return IconComponent;
   };
 

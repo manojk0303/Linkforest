@@ -128,7 +128,7 @@ export async function createLinkAction(input: unknown) {
           url: result.data.url,
           status: result.data.status ?? 'ACTIVE',
           position: (maxPosition._max.position ?? -1) + 1,
-          metadata: result.data.metadata ?? {},
+          metadata: (result.data.metadata ?? {}) as any,
         },
       });
 
@@ -166,7 +166,7 @@ export async function updateLinkAction(linkId: string, input: unknown) {
       url: result.data.url,
       status: result.data.status,
       position: result.data.position,
-      metadata: result.data.metadata,
+      metadata: result.data.metadata as any,
     },
   });
 
@@ -273,7 +273,7 @@ export async function duplicateProfileAction(profileId: string) {
             displayName: source.displayName ? `${source.displayName} (copy)` : null,
             bio: source.bio,
             image: source.image,
-            themeSettings: source.themeSettings,
+            themeSettings: source.themeSettings as any,
             status: source.status,
           },
         });

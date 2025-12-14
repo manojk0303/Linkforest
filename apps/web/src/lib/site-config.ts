@@ -1,9 +1,9 @@
 export const siteConfig = {
-  name: 'Linkpop',
-  tagline: 'Share everything in one link',
+  name: 'Linkforest',
+  tagline: 'Grow your links. Own your audience.',
   description:
-    'Create beautiful link-in-bio pages that showcase all your content in one place. Perfect for creators, influencers, and businesses.',
-  url: 'https://linkpop.com',
+    'Real Analytics for $5/month. What Linktree Should Cost. Create beautiful link-in-bio pages with detailed analytics.',
+  url: 'https://linkforest.com',
   ogImage: '/og-image.jpg',
   navigation: [
     { name: 'Home', href: '/' },
@@ -35,7 +35,7 @@ export const siteConfig = {
     {
       icon: 'Mobile',
       title: 'Mobile Optimized',
-      description: 'Your Linkpop page looks great on every device with responsive design.',
+      description: 'Your Linkforest page looks great on every device with responsive design.',
     },
     {
       icon: 'Zap',
@@ -52,7 +52,7 @@ export const siteConfig = {
     {
       step: '01',
       title: 'Create Your Account',
-      description: 'Sign up for free and claim your unique Linkpop URL.',
+      description: 'Sign up for free and claim your unique Linkforest URL.',
     },
     {
       step: '02',
@@ -67,7 +67,7 @@ export const siteConfig = {
     {
       step: '04',
       title: 'Share & Track',
-      description: 'Share your Linkpop everywhere and watch your engagement grow.',
+      description: 'Share your Linkforest everywhere and watch your engagement grow.',
     },
   ],
   testimonials: [
@@ -75,7 +75,7 @@ export const siteConfig = {
       name: 'Sarah Johnson',
       role: 'Content Creator',
       content:
-        'Linkpop transformed how I share my content. My engagement has increased by 300% since using it!',
+        'Linkforest transformed how I share my content. My engagement has increased by 300% since using it!',
       avatar: '/testimonials/sarah.jpg',
     },
     {
@@ -89,7 +89,7 @@ export const siteConfig = {
       name: 'Emily Rodriguez',
       role: 'Influencer',
       content:
-        'I love how customizable my Linkpop page is. It truly represents my brand and personality.',
+        'I love how customizable my Linkforest page is. It truly represents my brand and personality.',
       avatar: '/testimonials/emily.jpg',
     },
   ],
@@ -109,7 +109,7 @@ export const siteConfig = {
     },
     pro: {
       name: 'Pro',
-      price: '$9',
+      price: '$5',
       period: 'per month',
       description: 'Best for creators and professionals',
       features: [
@@ -118,7 +118,7 @@ export const siteConfig = {
         'Advanced analytics',
         'Custom domain',
         'Email support',
-        'Remove Linkpop branding',
+        'Remove Linkforest branding',
       ],
     },
     business: {
@@ -155,10 +155,10 @@ export const siteConfig = {
       { name: 'Cookie Policy', href: '/cookies' },
     ],
     social: [
-      { name: 'Twitter', href: 'https://twitter.com/linkpop' },
-      { name: 'Instagram', href: 'https://instagram.com/linkpop' },
-      { name: 'LinkedIn', href: 'https://linkedin.com/company/linkpop' },
-      { name: 'GitHub', href: 'https://github.com/linkpop' },
+      { name: 'Twitter', href: 'https://twitter.com/linkforest' },
+      { name: 'Instagram', href: 'https://instagram.com/linkforest' },
+      { name: 'LinkedIn', href: 'https://linkedin.com/company/linkforest' },
+      { name: 'GitHub', href: 'https://github.com/linkforest' },
     ],
   },
 };

@@ -9,22 +9,22 @@ export const metadata: Metadata = {
 
 const faqs = [
   {
-    question: 'What is Linkpop?',
+    question: 'What is Linkforest?',
     answer:
-      'Linkpop is a link-in-bio platform that helps you create beautiful, customizable pages to share all your important links in one place. Perfect for creators, influencers, and businesses who want to centralize their online presence.',
+      'Linkforest is a link-in-bio platform that helps you create beautiful, customizable pages to share all your important links in one place. Perfect for creators, influencers, and businesses who want to centralize their online presence.',
   },
   {
     question: 'How do I get started?',
     answer:
-      'Getting started is easy! Simply sign up for a free account, claim your unique Linkpop URL, add your links, and customize your page to match your brand. You can be up and running in just a few minutes.',
+      'Getting started is easy! Simply sign up for a free account, claim your unique Linkforest URL, add your links, and customize your page to match your brand. You can be up and running in just a few minutes.',
   },
   {
-    question: 'Is Linkpop free?',
+    question: 'Is Linkforest free?',
     answer:
       'Yes! We offer a free plan that includes 5 custom links, basic themes, click analytics, and mobile responsiveness. We also have Pro and Business plans with advanced features for growing creators and businesses.',
   },
   {
-    question: 'Can I change my Linkpop username?',
+    question: 'Can I change my Linkforest username?',
     answer:
       'Your username can only be changed once within the first 7 days of account creation. After that, it becomes permanent to maintain link consistency for your audience.',
   },
@@ -36,7 +36,7 @@ const faqs = [
   {
     question: 'Do you offer custom domains?',
     answer:
-      'Yes! Pro and Business plan users can connect their own custom domain to their Linkpop page. This helps maintain brand consistency and makes your links even easier to remember.',
+      'Yes! Pro and Business plan users can connect their own custom domain to their Linkforest page. This helps maintain brand consistency and makes your links even easier to remember.',
   },
   {
     question: 'How does the analytics work?',
@@ -56,12 +56,12 @@ const faqs = [
   {
     question: 'Can I collaborate with a team?',
     answer:
-      'Yes! Our Business plan includes team collaboration features that allow multiple people to manage a Linkpop page, perfect for businesses and organizations.',
+      'Yes! Our Business plan includes team collaboration features that allow multiple people to manage a Linkforest page, perfect for businesses and organizations.',
   },
   {
     question: 'How do I contact support?',
     answer:
-      'You can reach our support team by filling out the contact form on our Contact page, emailing hello@linkpop.com, or visiting our Help Center for self-service options.',
+      'You can reach our support team by filling out the contact form on our Contact page, emailing hello@linkforest.com, or visiting our Help Center for self-service options.',
   },
   {
     question: 'Can I export my data?',

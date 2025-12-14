@@ -44,7 +44,7 @@ export async function POST(_request: Request, { params }: { params: { profileId:
             displayName: source.displayName ? `${source.displayName} (copy)` : null,
             bio: source.bio,
             image: source.image,
-            themeSettings: source.themeSettings,
+            themeSettings: source.themeSettings as any,
             status: source.status,
           },
         });
