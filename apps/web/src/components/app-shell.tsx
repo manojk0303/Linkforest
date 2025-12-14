@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { signOut, useSession } from 'next-auth/react';
 
 import { Button } from '@acme/ui';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -36,6 +37,7 @@ function isMarketingPath(pathname: string) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const isPublicProfile = isPublicProfilePath(pathname);
   const isMarketing = isMarketingPath(pathname);
 
@@ -70,12 +72,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
 
             <div className="hidden items-center space-x-4 md:flex">
-              <Button variant="ghost" asChild>
-                <Link href="/auth/login">Sign In</Link>
-              </Button>
-              <Button asChild>
-                <Link href="/auth/register">{siteConfig.cta.primary.text}</Link>
-              </Button>
+              {session?.user ? (
+                <>
+                  <Button variant="ghost" asChild>
+                    <Link href="/dashboard">Dashboard</Link>
+                  </Button>
+                  <Button variant="outline" onClick={() => void signOut({ callbackUrl: '/' })}>
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="ghost" asChild>
+                    <Link href="/auth/login">Sign In</Link>
+                  </Button>
+                  <Button asChild>
+                    <Link href="/auth/register">{siteConfig.cta.primary.text}</Link>
+                  </Button>
+                </>
+              )}
               <ThemeToggle />
             </div>
 
@@ -98,7 +113,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/" className="font-semibold">
             {siteConfig.name}
           </Link>
-          <ThemeToggle />
+
+          <div className="flex items-center gap-2">
+            {session?.user ? (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link href="/dashboard">Dashboard</Link>
+                </Button>
+                <Button variant="outline" onClick={() => void signOut({ callbackUrl: '/' })}>
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link href="/auth/login">Sign In</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/auth/register">{siteConfig.cta.primary.text}</Link>
+                </Button>
+              </>
+            )}
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       <main className="container py-10">{children}</main>

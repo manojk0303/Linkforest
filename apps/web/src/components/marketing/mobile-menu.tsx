@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
+import { signOut, useSession } from 'next-auth/react';
 
 import { Button } from '@acme/ui';
 import { siteConfig } from '@/lib/site-config';
@@ -13,6 +14,7 @@ interface MobileMenuProps {
 
 export function MobileMenu({ className }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { data: session } = useSession();
 
   const navigation = siteConfig.navigation;
 
@@ -43,16 +45,37 @@ export function MobileMenu({ className }: MobileMenuProps) {
               ))}
             </nav>
             <div className="flex flex-col space-y-2 border-t pt-4">
-              <Button variant="ghost" asChild>
-                <Link href="/auth/login" onClick={() => setIsOpen(false)}>
-                  Sign In
-                </Link>
-              </Button>
-              <Button asChild>
-                <Link href="/auth/register" onClick={() => setIsOpen(false)}>
-                  {siteConfig.cta.primary.text}
-                </Link>
-              </Button>
+              {session?.user ? (
+                <>
+                  <Button variant="ghost" asChild>
+                    <Link href="/dashboard" onClick={() => setIsOpen(false)}>
+                      Dashboard
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsOpen(false);
+                      void signOut({ callbackUrl: '/' });
+                    }}
+                  >
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="ghost" asChild>
+                    <Link href="/auth/login" onClick={() => setIsOpen(false)}>
+                      Sign In
+                    </Link>
+                  </Button>
+                  <Button asChild>
+                    <Link href="/auth/register" onClick={() => setIsOpen(false)}>
+                      {siteConfig.cta.primary.text}
+                    </Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

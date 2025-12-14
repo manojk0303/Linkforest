@@ -20,12 +20,6 @@ export default async function AdminBillingPage() {
     take: 50,
   });
 
-  // Summary stats
-  const subscriptionStats = await prisma.subscription.groupBy({
-    by: ['status'],
-    _count: true,
-  });
-
   // Calculate revenue metrics (simplified - no actual Stripe amounts)
   const totalActive = subscriptions.filter((s) => s.status === 'ACTIVE').length;
   const monthlyRecurring = totalActive * 5; // $5/month single plan

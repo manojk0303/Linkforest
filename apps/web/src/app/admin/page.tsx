@@ -16,7 +16,7 @@ export default async function AdminPage() {
             <a href="/dashboard">Dashboard</a>
           </Button>
           <Button variant="outline" asChild>
-            <a href="/api/auth/signout">Sign Out</a>
+            <a href="/api/auth/signout?callbackUrl=/">Sign Out</a>
           </Button>
         </div>
       </div>

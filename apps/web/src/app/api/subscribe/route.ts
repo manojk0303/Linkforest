@@ -17,7 +17,7 @@ function verifyStripeWebhook(
     const crypto = require('crypto');
     const hmac = crypto.createHmac('sha256', process.env.STRIPE_WEBHOOK_SECRET);
     hmac.update(body);
-    const digest = `t=${Math.floor(Date.now() / 1000)},v1=${hmac.digest('hex')}`;
+    hmac.digest('hex');
 
     // For simplicity, we'll just verify signature exists (full implementation would use crypto)
     // In production, use the official Stripe Node SDK

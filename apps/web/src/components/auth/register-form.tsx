@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import {
   Button,
   Card,
@@ -44,7 +45,19 @@ export function RegisterForm() {
         return;
       }
 
-      router.push('/auth/login?registered=true');
+      const signInResult = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (signInResult?.error) {
+        router.push('/auth/login');
+        return;
+      }
+
+      router.push('/dashboard');
+      router.refresh();
     } catch (err) {
       setError('An unexpected error occurred');
       setIsLoading(false);
