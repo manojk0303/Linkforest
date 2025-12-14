@@ -63,32 +63,39 @@ export async function POST(request: NextRequest) {
         });
 
         if (user) {
-          await prisma.subscription.upsert({
-            where: { providerSubscriptionId: subscriptionId },
-            create: {
-              userId: user.id,
-              providerCustomerId: customerId,
-              providerSubscriptionId: subscriptionId,
-              plan: status === 'active' ? 'PRO' : 'FREE',
-              status: status.toUpperCase() as any,
-              currentPeriodStart: subscription.current_period_start
-                ? new Date((subscription.current_period_start as number) * 1000)
-                : undefined,
-              currentPeriodEnd: subscription.current_period_end
-                ? new Date((subscription.current_period_end as number) * 1000)
-                : undefined,
-            },
-            update: {
-              plan: status === 'active' ? 'PRO' : 'FREE',
-              status: status.toUpperCase() as any,
-              currentPeriodStart: subscription.current_period_start
-                ? new Date((subscription.current_period_start as number) * 1000)
-                : undefined,
-              currentPeriodEnd: subscription.current_period_end
-                ? new Date((subscription.current_period_end as number) * 1000)
-                : undefined,
-            },
-          });
+          const normalizedStatus = status.toUpperCase() as any;
+          const isPaid = status === 'active' || status === 'trialing';
+
+          await prisma.$transaction([
+            prisma.subscription.upsert({
+              where: { providerSubscriptionId: subscriptionId },
+              create: {
+                userId: user.id,
+                providerCustomerId: customerId,
+                providerSubscriptionId: subscriptionId,
+                status: normalizedStatus,
+                currentPeriodStart: subscription.current_period_start
+                  ? new Date((subscription.current_period_start as number) * 1000)
+                  : undefined,
+                currentPeriodEnd: subscription.current_period_end
+                  ? new Date((subscription.current_period_end as number) * 1000)
+                  : undefined,
+              },
+              update: {
+                status: normalizedStatus,
+                currentPeriodStart: subscription.current_period_start
+                  ? new Date((subscription.current_period_start as number) * 1000)
+                  : undefined,
+                currentPeriodEnd: subscription.current_period_end
+                  ? new Date((subscription.current_period_end as number) * 1000)
+                  : undefined,
+              },
+            }),
+            prisma.user.update({
+              where: { id: user.id },
+              data: { isPaid },
+            }),
+          ]);
         }
       }
 
@@ -97,6 +104,11 @@ export async function POST(request: NextRequest) {
         const subscription = eventData?.object as Record<string, unknown>;
         const subscriptionId = subscription.id as string;
 
+        const existing = await prisma.subscription.findUnique({
+          where: { providerSubscriptionId: subscriptionId },
+          select: { userId: true },
+        });
+
         await prisma.subscription.update({
           where: { providerSubscriptionId: subscriptionId },
           data: {
@@ -104,6 +116,10 @@ export async function POST(request: NextRequest) {
             canceledAt: new Date(),
           },
         });
+
+        if (existing?.userId) {
+          await prisma.user.update({ where: { id: existing.userId }, data: { isPaid: false } });
+        }
       }
 
       return NextResponse.json({ received: true });
@@ -122,13 +138,13 @@ export async function POST(request: NextRequest) {
       }
 
       const body = await request.json();
-      const { action, plan } = body;
+      const { action } = body;
 
       if (action === 'create-checkout') {
-        // In a real implementation, create a Stripe checkout session
-        // For now, return a placeholder
+        // Linkforest has one plan only ($5/mo).
+        // In a real implementation, you'd create a Stripe Checkout Session here.
         return NextResponse.json({
-          checkoutUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/billing?plan=${plan}`,
+          checkoutUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard/billing`,
           message: 'Checkout session would be created via Stripe SDK',
         });
       }
@@ -168,70 +184,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const subscription = await prisma.subscription.findFirst({
-      where: { userId: session.user.id },
-      select: {
-        plan: true,
-        status: true,
-        currentPeriodStart: true,
-        currentPeriodEnd: true,
-        cancelAtPeriodEnd: true,
-      },
-    });
-
-    if (!subscription) {
-      // User has no subscription, return default FREE tier
-      return NextResponse.json({
-        plan: 'FREE',
-        status: 'ACTIVE',
-        currentPeriodStart: null,
-        currentPeriodEnd: null,
-        cancelAtPeriodEnd: false,
-        features: getFeatureFlags('FREE'),
-      });
-    }
+    const [user, subscription] = await Promise.all([
+      prisma.user.findUnique({ where: { id: session.user.id }, select: { isPaid: true } }),
+      prisma.subscription.findFirst({
+        where: { userId: session.user.id },
+        select: {
+          status: true,
+          currentPeriodStart: true,
+          currentPeriodEnd: true,
+          cancelAtPeriodEnd: true,
+        },
+      }),
+    ]);
 
     return NextResponse.json({
-      ...subscription,
-      features: getFeatureFlags(subscription.plan),
+      isPaid: user?.isPaid ?? false,
+      status: subscription?.status ?? null,
+      currentPeriodStart: subscription?.currentPeriodStart ?? null,
+      currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
+      cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
+      price: 5,
+      currency: 'USD',
+      interval: 'month',
     });
   } catch (error) {
     console.error('Get subscription error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-function getFeatureFlags(plan: string): Record<string, boolean | number> {
-  const baseFeatures: Record<string, boolean | number> = {
-    basicAnalytics: true,
-    linkTracking: true,
-    maxLinks: 10,
-  };
-
-  const proFeatures: Record<string, boolean | number> = {
-    ...baseFeatures,
-    customDomains: true,
-    advancedAnalytics: true,
-    scheduledLinks: true,
-    maxLinks: 100,
-    apiAccess: true,
-  };
-
-  const businessFeatures: Record<string, boolean | number> = {
-    ...proFeatures,
-    teamMembers: true,
-    customBranding: true,
-    dedicatedSupport: true,
-    maxLinks: -1, // unlimited
-  };
-
-  switch (plan) {
-    case 'PRO':
-      return proFeatures;
-    case 'BUSINESS':
-      return businessFeatures;
-    case 'FREE':
-    default:
-      return baseFeatures;
   }
 }

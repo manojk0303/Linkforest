@@ -22,22 +22,13 @@ export default async function AdminBillingPage() {
 
   // Summary stats
   const subscriptionStats = await prisma.subscription.groupBy({
-    by: ['plan', 'status'],
+    by: ['status'],
     _count: true,
   });
 
   // Calculate revenue metrics (simplified - no actual Stripe amounts)
   const totalActive = subscriptions.filter((s) => s.status === 'ACTIVE').length;
-  const monthlyRecurring = totalActive * 99; // Assuming $99/month for PRO
-
-  const planBreakdown = subscriptions.reduce(
-    (acc, sub) => {
-      const key = sub.plan;
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+  const monthlyRecurring = totalActive * 5; // $5/month single plan
 
   const statusBreakdown = subscriptions.reduce(
     (acc, sub) => {
@@ -102,20 +93,21 @@ export default async function AdminBillingPage() {
         </Card>
       </div>
 
-      {/* Plan Breakdown */}
       <Card>
         <CardHeader>
-          <CardTitle>Subscriptions by Plan</CardTitle>
-          <CardDescription>Active subscriptions by tier</CardDescription>
+          <CardTitle>Plan</CardTitle>
+          <CardDescription>Linkforest has one plan: $5/month.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {['FREE', 'PRO', 'BUSINESS'].map((plan) => (
-              <div key={plan} className="rounded-lg border p-4">
-                <h3 className="font-semibold">{plan}</h3>
-                <p className="mt-2 text-2xl font-bold">{planBreakdown[plan] || 0}</p>
-              </div>
-            ))}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-muted-foreground text-sm">Name</p>
+              <p className="mt-1 text-lg font-semibold">Linkforest Pro</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-sm">Price</p>
+              <p className="mt-1 text-lg font-semibold">$5 / month</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -153,7 +145,6 @@ export default async function AdminBillingPage() {
                 <thead>
                   <tr className="border-b">
                     <th className="px-2 py-2 text-left">User</th>
-                    <th className="px-2 py-2 text-left">Plan</th>
                     <th className="px-2 py-2 text-left">Status</th>
                     <th className="px-2 py-2 text-left">Period End</th>
                   </tr>
@@ -166,11 +157,6 @@ export default async function AdminBillingPage() {
                           <p className="font-medium">{sub.user.name || 'Unnamed'}</p>
                           <p className="text-muted-foreground text-xs">{sub.user.email}</p>
                         </div>
-                      </td>
-                      <td className="px-2 py-2">
-                        <span className="inline-block rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                          {sub.plan}
-                        </span>
                       </td>
                       <td className="px-2 py-2">
                         <span

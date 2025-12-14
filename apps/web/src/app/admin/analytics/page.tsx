@@ -12,20 +12,17 @@ export default async function AdminAnalyticsPage() {
     totalProfiles,
     totalLinks,
     totalClicks,
-    subscriptionStats,
+    paidUsers,
     recentAnalytics,
     topCountries,
     deviceBreakdown,
   ] = await Promise.all([
     prisma.user.count({ where: { deletedAt: null } }),
     prisma.user.count({ where: { status: 'ACTIVE', deletedAt: null } }),
+    prisma.user.count({ where: { isPaid: true, deletedAt: null } }),
     prisma.profile.count({ where: { deletedAt: null } }),
     prisma.link.count({ where: { deletedAt: null } }),
     prisma.analytics.count(),
-    prisma.subscription.groupBy({
-      by: ['plan'],
-      _count: true,
-    }),
     prisma.analytics.findMany({
       take: 10,
       orderBy: { clickedAt: 'desc' },
@@ -55,14 +52,7 @@ export default async function AdminAnalyticsPage() {
     }),
   ]);
 
-  // Calculate subscription breakdown
-  const subscriptionBreakdown = subscriptionStats.reduce(
-    (acc, item) => {
-      acc[item.plan] = item._count;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+  const unpaidUsers = totalUsers - paidUsers;
 
   const clicks7d = await prisma.analytics.count({
     where: {
@@ -128,30 +118,32 @@ export default async function AdminAnalyticsPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Subscriptions</CardTitle>
+            <CardTitle className="text-sm font-medium">Paid Users</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {Object.values(subscriptionBreakdown).reduce((a, b) => a + b, 0)}
-            </div>
+            <div className="text-2xl font-bold">{paidUsers}</div>
+            <p className="text-muted-foreground mt-1 text-xs">Unpaid: {unpaidUsers}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Subscription Breakdown */}
       <Card>
         <CardHeader>
-          <CardTitle>Subscription Breakdown</CardTitle>
-          <CardDescription>Users by subscription plan</CardDescription>
+          <CardTitle>Paid Status</CardTitle>
+          <CardDescription>
+            Linkforest has one plan ($5/mo) — users are either paid or unpaid.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {['FREE', 'PRO', 'BUSINESS'].map((plan) => (
-              <div key={plan} className="rounded-lg border p-4">
-                <h3 className="font-semibold">{plan}</h3>
-                <p className="mt-2 text-2xl font-bold">{subscriptionBreakdown[plan] || 0}</p>
-              </div>
-            ))}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-lg border p-4">
+              <h3 className="font-semibold">Paid</h3>
+              <p className="mt-2 text-2xl font-bold">{paidUsers}</p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <h3 className="font-semibold">Unpaid</h3>
+              <p className="mt-2 text-2xl font-bold">{unpaidUsers}</p>
+            </div>
           </div>
         </CardContent>
       </Card>

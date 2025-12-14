@@ -7,12 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum SubscriptionPlan {
-  FREE
-  PRO
-  BUSINESS
-}
-
 enum SubscriptionStatus {
   TRIALING
   ACTIVE
@@ -61,6 +55,8 @@ model User {
 
   role   UserRole   @default(USER)
   status UserStatus @default(ACTIVE)
+
+  isPaid Boolean @default(false)
 
   deletedAt DateTime?
 
@@ -139,7 +135,6 @@ model Subscription {
   id     String @id @default(cuid())
   userId String
 
-  plan   SubscriptionPlan   @default(FREE)
   status SubscriptionStatus @default(ACTIVE)
 
   provider               String  @default("stripe")
