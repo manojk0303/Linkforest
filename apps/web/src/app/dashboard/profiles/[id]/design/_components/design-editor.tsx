@@ -10,6 +10,7 @@ import {
   CardTitle,
   Input,
   Label,
+  toast,
 } from '@acme/ui';
 import { ThemeSettings } from '@/lib/theme-settings';
 import { ProfilePreview } from './profile-preview';
@@ -136,7 +137,15 @@ export function DesignEditor({ profile, links }: DesignEditorProps) {
       });
 
       if (response.ok) {
+        toast({ title: 'Saving changes…', description: 'Your design has been updated.' });
         router.refresh();
+      } else {
+        const data = await response.json().catch(() => null);
+        toast({
+          title: 'Save failed',
+          description: data?.error || 'Could not save changes',
+          variant: 'destructive',
+        });
       }
     } finally {
       setSaving(false);

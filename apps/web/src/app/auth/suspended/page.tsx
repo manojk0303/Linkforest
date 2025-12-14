@@ -24,7 +24,7 @@ export default function SuspendedPage() {
         </CardContent>
         <CardFooter>
           <Button asChild variant="outline" className="w-full">
-            <a href="/api/auth/signout">Sign Out</a>
+            <a href="/api/auth/signout?callbackUrl=/">Sign Out</a>
           </Button>
         </CardFooter>
       </Card>

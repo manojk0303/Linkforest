@@ -10,20 +10,22 @@ import { FeatureComparison } from './_components/feature-comparison';
 export default async function BillingPage() {
   const user = await requireAuth();
 
-  const subscription = await prisma.subscription.findFirst({
-    where: { userId: user.id },
-    select: {
-      id: true,
-      plan: true,
-      status: true,
-      currentPeriodStart: true,
-      currentPeriodEnd: true,
-      cancelAtPeriodEnd: true,
-    },
-  });
+  const [dbUser, subscription] = await Promise.all([
+    prisma.user.findUnique({ where: { id: user.id }, select: { isPaid: true } }),
+    prisma.subscription.findFirst({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        status: true,
+        currentPeriodStart: true,
+        currentPeriodEnd: true,
+        cancelAtPeriodEnd: true,
+      },
+    }),
+  ]);
 
-  const currentPlan = subscription?.plan || 'FREE';
-  const currentStatus = subscription?.status || 'ACTIVE';
+  const isPaid = dbUser?.isPaid ?? false;
+  const currentStatus = subscription?.status || (isPaid ? 'ACTIVE' : 'INACTIVE');
 
   return (
     <div className="space-y-8">
@@ -38,7 +40,7 @@ export default async function BillingPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Billing & Subscription</h1>
-            <p className="text-muted-foreground">Manage your subscription and upgrade plan</p>
+            <p className="text-muted-foreground">Manage your $5/month Linkforest subscription</p>
           </div>
           <Button variant="outline" asChild>
             <a href="/dashboard">Back to Dashboard</a>
@@ -53,22 +55,28 @@ export default async function BillingPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-muted-foreground text-sm">Plan</p>
-                <p className="mt-1 text-2xl font-bold">{currentPlan}</p>
+                <p className="mt-1 text-2xl font-bold">Linkforest Pro</p>
+                <p className="text-muted-foreground mt-1 text-sm">$5 / month</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-sm">Status</p>
                 <p
                   className={`mt-1 text-lg font-semibold ${
-                    currentStatus === 'ACTIVE'
+                    isPaid
                       ? 'text-green-600 dark:text-green-400'
                       : 'text-yellow-600 dark:text-yellow-400'
                   }`}
                 >
-                  {currentStatus}
+                  {isPaid ? 'Active' : 'Not subscribed'}
                 </p>
+                {subscription?.status && (
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    Subscription status: {subscription.status}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -83,12 +91,12 @@ export default async function BillingPage() {
               </div>
             )}
 
-            <BillingActions currentPlan={currentPlan} subscriptionId={subscription?.id} />
+            <BillingActions isPaid={isPaid} subscriptionId={subscription?.id} />
           </div>
         </CardContent>
       </Card>
 
-      <FeatureComparison currentPlan={currentPlan} />
+      <FeatureComparison />
 
       <Card>
         <CardHeader>
@@ -99,19 +107,18 @@ export default async function BillingPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <div>
               <p className="text-muted-foreground text-sm">Profiles</p>
-              <p className="mt-1 text-2xl font-bold">-</p>
-              <p className="text-muted-foreground mt-1 text-xs">Unlimited</p>
+              <p className="mt-1 text-2xl font-bold">Up to 5</p>
+              <p className="text-muted-foreground mt-1 text-xs">Per account</p>
             </div>
             <div>
               <p className="text-muted-foreground text-sm">Links</p>
-              <p className="mt-1 text-2xl font-bold">-</p>
-              <p className="text-muted-foreground mt-1 text-xs">
-                {currentPlan === 'FREE' ? '10' : currentPlan === 'PRO' ? '100' : 'Unlimited'}
-              </p>
+              <p className="mt-1 text-2xl font-bold">Unlimited</p>
+              <p className="text-muted-foreground mt-1 text-xs">Add as many links as you want</p>
             </div>
             <div>
-              <p className="text-muted-foreground text-sm">API Access</p>
-              <p className="mt-1 text-2xl font-bold">{currentPlan === 'FREE' ? 'No' : 'Yes'}</p>
+              <p className="text-muted-foreground text-sm">Analytics</p>
+              <p className="mt-1 text-2xl font-bold">Included</p>
+              <p className="text-muted-foreground mt-1 text-xs">Track clicks and visitors</p>
             </div>
           </div>
         </CardContent>

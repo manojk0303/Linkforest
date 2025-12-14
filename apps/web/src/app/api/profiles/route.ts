@@ -50,6 +50,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const profileCount = await prisma.profile.count({
+      where: { userId: auth.user.id, deletedAt: null },
+    });
+
+    if (profileCount >= 5) {
+      return NextResponse.json({ error: 'Maximum 5 profiles reached' }, { status: 400 });
+    }
+
     const existing = await prisma.profile.findUnique({
       where: { slug: result.data.slug },
       select: { id: true },

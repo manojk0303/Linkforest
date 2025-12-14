@@ -1,23 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@acme/ui';
+import { Button, toast } from '@acme/ui';
 
 interface BillingActionsProps {
-  currentPlan: string;
+  isPaid: boolean;
   subscriptionId?: string;
 }
 
-export function BillingActions({ currentPlan, subscriptionId }: BillingActionsProps) {
+export function BillingActions({ isPaid, subscriptionId }: BillingActionsProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleUpgrade = async (plan: string) => {
-    if (plan === currentPlan) {
-      alert('You are already on this plan');
-      return;
-    }
-
+  const handleSubscribe = async () => {
     setLoading(true);
     setError(null);
 
@@ -25,22 +20,24 @@ export function BillingActions({ currentPlan, subscriptionId }: BillingActionsPr
       const response = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'create-checkout',
-          plan,
-        }),
+        body: JSON.stringify({ action: 'create-checkout' }),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to create checkout');
+        throw new Error(data.error || 'Failed to start checkout');
       }
 
       const data = await response.json();
-      // In a real implementation, this would redirect to Stripe
+      toast({
+        title: 'Opening checkout…',
+        description: 'You’ll be redirected to complete payment.',
+      });
       window.open(data.checkoutUrl || '#', '_blank');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const message = err instanceof Error ? err.message : 'An error occurred';
+      setError(message);
+      toast({ title: 'Checkout failed', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -48,7 +45,11 @@ export function BillingActions({ currentPlan, subscriptionId }: BillingActionsPr
 
   const handleBillingPortal = async () => {
     if (!subscriptionId) {
-      alert('No subscription found');
+      toast({
+        title: 'No subscription found',
+        description: 'There is no active subscription to manage.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -59,9 +60,7 @@ export function BillingActions({ currentPlan, subscriptionId }: BillingActionsPr
       const response = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'create-billing-portal',
-        }),
+        body: JSON.stringify({ action: 'create-billing-portal' }),
       });
 
       if (!response.ok) {
@@ -70,10 +69,11 @@ export function BillingActions({ currentPlan, subscriptionId }: BillingActionsPr
       }
 
       const data = await response.json();
-      // In a real implementation, this would redirect to Stripe
       window.open(data.portalUrl || '#', '_blank');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const message = err instanceof Error ? err.message : 'An error occurred';
+      setError(message);
+      toast({ title: 'Billing portal failed', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -84,21 +84,13 @@ export function BillingActions({ currentPlan, subscriptionId }: BillingActionsPr
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       <div className="flex flex-wrap gap-2">
-        {currentPlan !== 'FREE' && subscriptionId && (
+        {isPaid && subscriptionId ? (
           <Button variant="outline" onClick={handleBillingPortal} disabled={loading}>
-            Manage Billing
+            {loading ? 'Opening…' : 'Manage Billing'}
           </Button>
-        )}
-
-        {currentPlan === 'FREE' && (
-          <Button onClick={() => handleUpgrade('PRO')} disabled={loading}>
-            Upgrade to PRO
-          </Button>
-        )}
-
-        {currentPlan === 'PRO' && (
-          <Button onClick={() => handleUpgrade('BUSINESS')} disabled={loading}>
-            Upgrade to BUSINESS
+        ) : (
+          <Button onClick={handleSubscribe} disabled={loading}>
+            {loading ? 'Starting checkout…' : 'Subscribe for $5/month'}
           </Button>
         )}
       </div>

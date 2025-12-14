@@ -1,20 +1,48 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Prisma } from '@prisma/client';
+import { CheckCircle2, MoreHorizontal } from 'lucide-react';
 
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, cn } from '@acme/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Spinner,
+  Switch,
+  cn,
+  toast,
+} from '@acme/ui';
 
 import {
   ProfilePreview,
   type PreviewLink,
   type PreviewProfile,
 } from '@/components/profile-preview';
+import { slugify } from '@/lib/slugs';
 import type { ThemeSettings } from '@/lib/theme-settings';
 
 import {
   archiveLinkAction,
+  checkProfileSlugAvailabilityAction,
   createLinkAction,
   createProfileAction,
   duplicateProfileAction,
@@ -24,7 +52,6 @@ import {
   updateProfileAction,
 } from '../actions';
 
-import { AvatarUploader } from './avatar-uploader';
 import { IconPicker } from './icon-picker';
 import { LinksDndList } from './links-dnd-list';
 
@@ -48,6 +75,28 @@ export type EditorLink = {
   status: 'ACTIVE' | 'HIDDEN' | 'ARCHIVED';
   metadata: Prisma.JsonValue;
 };
+
+function isValidHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function downloadTextFile(content: string, mimeType: string, filename: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 function getLinkMetadata(link: Pick<EditorLink, 'metadata'>): Record<string, any> {
   if (!link.metadata || typeof link.metadata !== 'object') return {};
@@ -86,6 +135,7 @@ export function ProfileEditor({
     id: string;
     slug: string;
     displayName: string | null;
+    image?: string | null;
     status: 'ACTIVE' | 'DISABLED';
   }>;
   profile: EditorProfile;
@@ -97,8 +147,47 @@ export function ProfileEditor({
   const [profileState, setProfileState] = useState(profile);
   const [linksState, setLinksState] = useState<EditorLink[]>(links);
 
+  const [switchingProfile, setSwitchingProfile] = useState(false);
+
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [newLinkUrlTouched, setNewLinkUrlTouched] = useState(false);
+  const [addingLink, setAddingLink] = useState(false);
+
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+
+  const [createName, setCreateName] = useState('');
+  const [createSlug, setCreateSlug] = useState('');
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createSlugStatus, setCreateSlugStatus] = useState<{
+    loading: boolean;
+    available: boolean | null;
+    message: string | null;
+  }>({ loading: false, available: null, message: null });
+
+  const [duplicateName, setDuplicateName] = useState('');
+  const [duplicateSlug, setDuplicateSlug] = useState('');
+  const [duplicateSubmitting, setDuplicateSubmitting] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  const [duplicateSlugStatus, setDuplicateSlugStatus] = useState<{
+    loading: boolean;
+    available: boolean | null;
+    message: string | null;
+  }>({ loading: false, available: null, message: null });
+
+  const [exporting, setExporting] = useState(false);
+
+  const isPublished = profileState.status === 'ACTIVE';
+  const profilesUsedText = `${profiles.length}/5 profiles used`;
+  const atProfileLimit = profiles.length >= 5;
+
+  const newUrlValid = isValidHttpUrl(newLinkUrl.trim());
 
   const previewProfile: PreviewProfile = useMemo(
     () => ({
@@ -142,6 +231,11 @@ export function ProfileEditor({
       });
 
       if (!result.ok) {
+        toast({
+          title: 'Could not save profile',
+          description: result.error,
+          variant: 'destructive',
+        });
         router.refresh();
       }
     });
@@ -151,7 +245,19 @@ export function ProfileEditor({
     const title = newLinkTitle.trim();
     const url = newLinkUrl.trim();
 
-    if (!title || !url) return;
+    if (!title) return;
+
+    if (!url || !isValidHttpUrl(url)) {
+      setNewLinkUrlTouched(true);
+      toast({
+        title: 'Invalid URL',
+        description: 'Please enter a valid URL (e.g., https://instagram.com/yourname)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setAddingLink(true);
 
     const tempId = `temp-${Date.now()}`;
     const optimisticLink: EditorLink = {
@@ -168,6 +274,7 @@ export function ProfileEditor({
     setLinksState((prev) => [...prev, optimisticLink]);
     setNewLinkTitle('');
     setNewLinkUrl('');
+    setNewLinkUrlTouched(false);
 
     const result = await createLinkAction({
       profileId: profile.id,
@@ -179,23 +286,41 @@ export function ProfileEditor({
 
     if (!result.ok) {
       setLinksState((prev) => prev.filter((l) => l.id !== tempId));
+      toast({ title: 'Could not add link', description: result.error, variant: 'destructive' });
+      setAddingLink(false);
       return;
     }
 
     setLinksState((prev) => prev.map((l) => (l.id === tempId ? (result.link as any) : l)));
+    setAddingLink(false);
+    toast({ title: 'Link added', description: 'Your link has been saved.' });
     router.refresh();
   }
 
   function handleUpdateLink(linkId: string, patch: Partial<EditorLink>) {
+    if (typeof patch.url === 'string' && patch.url && !isValidHttpUrl(patch.url.trim())) {
+      toast({
+        title: 'Invalid URL',
+        description: 'Please enter a valid URL (e.g., https://instagram.com/yourname)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLinksState((prev) => prev.map((l) => (l.id === linkId ? { ...l, ...patch } : l)));
 
     startTransition(async () => {
-      await updateLinkAction(linkId, {
+      const result = await updateLinkAction(linkId, {
         title: patch.title,
         url: patch.url,
         status: patch.status,
         metadata: patch.metadata,
       });
+
+      if (!result.ok) {
+        toast({ title: 'Could not save link', description: result.error, variant: 'destructive' });
+        router.refresh();
+      }
     });
   }
 
@@ -206,114 +331,489 @@ export function ProfileEditor({
     startTransition(async () => {
       const result = await archiveLinkAction(linkId);
       if (!result.ok) {
+        toast({
+          title: 'Could not delete link',
+          description: result.error,
+          variant: 'destructive',
+        });
         if (existing)
           setLinksState((prev) => [...prev, existing].sort((a, b) => a.position - b.position));
         return;
       }
+
+      toast({ title: 'Link deleted' });
       router.refresh();
     });
   }
 
   function handleReorder(orderedIds: string[]) {
     startTransition(async () => {
-      await reorderLinksAction({ profileId: profile.id, orderedLinkIds: orderedIds });
+      const result = await reorderLinksAction({
+        profileId: profile.id,
+        orderedLinkIds: orderedIds,
+      });
+      if (!result.ok) {
+        toast({
+          title: 'Could not reorder links',
+          description: result.error,
+          variant: 'destructive',
+        });
+      }
     });
   }
 
-  async function handleDuplicateProfile() {
-    const result = await duplicateProfileAction(profile.id);
-    if (!result.ok) return;
+  function handleSwitchProfile(nextProfileId: string) {
+    if (nextProfileId === profile.id) return;
+    const next = profiles.find((p) => p.id === nextProfileId);
 
-    router.push(`/dashboard?profile=${result.profile.id}`);
+    setSwitchingProfile(true);
+    toast({
+      title: 'Switched profile',
+      description: `Switched to ${next?.displayName || next?.slug || 'profile'}`,
+    });
+
+    router.push(`/dashboard?profile=${nextProfileId}`);
     router.refresh();
+
+    setTimeout(() => setSwitchingProfile(false), 300);
   }
 
-  async function handleExportProfile() {
-    const result = await exportProfileAction(profile.id);
-    if (!result.ok) return;
+  async function handleExport(format: 'links-csv' | 'full-json') {
+    setExporting(true);
+    try {
+      const result = await exportProfileAction(profile.id, format);
+      if (!result.ok) {
+        toast({ title: 'Export failed', description: result.error, variant: 'destructive' });
+        return;
+      }
 
-    const blob = new Blob([result.json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = result.filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+      downloadTextFile(result.content, result.mimeType, result.filename);
+      toast({ title: 'Export started', description: 'Your download should begin immediately.' });
+      setExportOpen(false);
+    } finally {
+      setExporting(false);
+    }
   }
 
-  async function handleCreateProfile() {
-    const base = slugifyLocal(user.name || user.email || 'profile');
-    const slug = window.prompt('New profile slug', base);
-    if (!slug) return;
+  useEffect(() => {
+    if (!createOpen) return;
+    const fallbackName = user.name || user.email || 'My Profile';
+    setCreateName('');
+    setCreateSlug(slugify(fallbackName));
+    setCreateError(null);
+    setCreateSlugStatus({ loading: false, available: null, message: null });
+  }, [createOpen, user.email, user.name]);
 
-    const result = await createProfileAction({ slug, displayName: 'New Profile' });
-    if (!result.ok) return;
+  useEffect(() => {
+    if (!duplicateOpen) return;
+    const baseName = profileState.displayName || profileState.slug;
+    setDuplicateName(`${baseName} Copy`);
+    setDuplicateSlug(`${profileState.slug}-copy`);
+    setDuplicateError(null);
+    setDuplicateSlugStatus({ loading: false, available: null, message: null });
+  }, [duplicateOpen, profileState.displayName, profileState.slug]);
 
-    router.push(`/dashboard?profile=${result.profile.id}`);
-    router.refresh();
+  useEffect(() => {
+    if (!createOpen) return;
+    const candidate = createSlug.trim();
+
+    if (candidate.length < 2) {
+      setCreateSlugStatus({ loading: false, available: null, message: null });
+      return;
+    }
+
+    setCreateSlugStatus((prev) => ({ ...prev, loading: true }));
+    const handle = setTimeout(async () => {
+      const res = await checkProfileSlugAvailabilityAction(candidate);
+      if (res.ok) {
+        setCreateSlugStatus({ loading: false, available: res.available, message: res.message });
+      }
+    }, 350);
+
+    return () => clearTimeout(handle);
+  }, [createSlug, createOpen]);
+
+  useEffect(() => {
+    if (!duplicateOpen) return;
+    const candidate = duplicateSlug.trim();
+
+    if (candidate.length < 2) {
+      setDuplicateSlugStatus({ loading: false, available: null, message: null });
+      return;
+    }
+
+    setDuplicateSlugStatus((prev) => ({ ...prev, loading: true }));
+    const handle = setTimeout(async () => {
+      const res = await checkProfileSlugAvailabilityAction(candidate);
+      if (res.ok) {
+        setDuplicateSlugStatus({ loading: false, available: res.available, message: res.message });
+      }
+    }, 350);
+
+    return () => clearTimeout(handle);
+  }, [duplicateSlug, duplicateOpen]);
+
+  async function submitCreateProfile() {
+    setCreateSubmitting(true);
+    setCreateError(null);
+
+    try {
+      const result = await createProfileAction({
+        slug: createSlug.trim(),
+        displayName: createName.trim() || undefined,
+      });
+
+      if (!result.ok) {
+        const message = result.error || 'Could not create profile';
+        setCreateError(message);
+        toast({ title: 'Create profile failed', description: message, variant: 'destructive' });
+        return;
+      }
+
+      toast({
+        title: 'Profile created',
+        description: `Profile created! You're now editing ${result.profile.displayName || result.profile.slug}.`,
+      });
+
+      setCreateOpen(false);
+      router.push(`/dashboard?profile=${result.profile.id}`);
+      router.refresh();
+    } finally {
+      setCreateSubmitting(false);
+    }
   }
 
-  const isDisabled = profileState.status === 'DISABLED';
+  async function submitDuplicateProfile() {
+    setDuplicateSubmitting(true);
+    setDuplicateError(null);
+
+    try {
+      const result = await duplicateProfileAction(profile.id, {
+        slug: duplicateSlug.trim(),
+        displayName: duplicateName.trim() || undefined,
+      });
+
+      if (!result.ok) {
+        const message = result.error || 'Could not duplicate profile';
+        setDuplicateError(message);
+        toast({ title: 'Duplicate failed', description: message, variant: 'destructive' });
+        return;
+      }
+
+      toast({
+        title: 'Profile duplicated',
+        description: `Profile duplicated! You're now editing ${result.profile.displayName || result.profile.slug}.`,
+      });
+
+      setDuplicateOpen(false);
+      setActionsOpen(false);
+      router.push(`/dashboard?profile=${result.profile.id}`);
+      router.refresh();
+    } finally {
+      setDuplicateSubmitting(false);
+    }
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
+      {/* Dialog: actions */}
+      <Dialog open={actionsOpen} onOpenChange={setActionsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Profile actions</DialogTitle>
+            <DialogDescription>Duplicate this profile or export your data.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Button type="button" variant="outline" onClick={() => setDuplicateOpen(true)}>
+              Duplicate This Profile
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setExportOpen(true)}>
+              Export Profile Data
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setActionsOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: create */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Profile</DialogTitle>
+            <DialogDescription>Profiles are limited to 5 per account.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {createError && <p className="text-destructive text-sm">{createError}</p>}
+
+            <div className="space-y-1">
+              <Label htmlFor="create-name">Profile name</Label>
+              <Input
+                id="create-name"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                placeholder="My new profile"
+                disabled={createSubmitting}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="create-slug">Username / slug</Label>
+              <Input
+                id="create-slug"
+                value={createSlug}
+                onChange={(e) => setCreateSlug(slugify(e.target.value))}
+                placeholder="my-username"
+                disabled={createSubmitting}
+              />
+              <div className="text-xs">
+                {createSlugStatus.loading ? (
+                  <span className="text-muted-foreground">Checking…</span>
+                ) : createSlugStatus.available === true ? (
+                  <span className="text-green-600 dark:text-green-400">
+                    ✓ {createSlugStatus.message}
+                  </span>
+                ) : createSlugStatus.available === false ? (
+                  <span className="text-destructive">✗ {createSlugStatus.message}</span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    Username can only contain letters, numbers, and hyphens
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="text-muted-foreground text-xs">{profilesUsedText}</div>
+
+            {atProfileLimit && (
+              <p className="text-destructive text-sm">Maximum 5 profiles reached</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void submitCreateProfile()}
+              disabled={createSubmitting || atProfileLimit || createSlugStatus.available === false}
+            >
+              {createSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <Spinner className="text-current" /> Creating profile…
+                </span>
+              ) : (
+                'Create profile'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: duplicate */}
+      <Dialog open={duplicateOpen} onOpenChange={setDuplicateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate {profileState.displayName || profileState.slug}</DialogTitle>
+            <DialogDescription>
+              Duplicates links and design settings (not analytics).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {duplicateError && <p className="text-destructive text-sm">{duplicateError}</p>}
+
+            <div className="space-y-1">
+              <Label htmlFor="dup-name">New profile name</Label>
+              <Input
+                id="dup-name"
+                value={duplicateName}
+                onChange={(e) => setDuplicateName(e.target.value)}
+                disabled={duplicateSubmitting}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="dup-slug">New username / slug</Label>
+              <Input
+                id="dup-slug"
+                value={duplicateSlug}
+                onChange={(e) => setDuplicateSlug(slugify(e.target.value))}
+                disabled={duplicateSubmitting}
+              />
+              <div className="text-xs">
+                {duplicateSlugStatus.loading ? (
+                  <span className="text-muted-foreground">Checking…</span>
+                ) : duplicateSlugStatus.available === true ? (
+                  <span className="text-green-600 dark:text-green-400">
+                    ✓ {duplicateSlugStatus.message}
+                  </span>
+                ) : duplicateSlugStatus.available === false ? (
+                  <span className="text-destructive">✗ {duplicateSlugStatus.message}</span>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="text-muted-foreground text-xs">{profilesUsedText}</div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDuplicateOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void submitDuplicateProfile()}
+              disabled={
+                duplicateSubmitting || atProfileLimit || duplicateSlugStatus.available === false
+              }
+            >
+              {duplicateSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <Spinner className="text-current" /> Duplicating…
+                </span>
+              ) : (
+                'Duplicate profile'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: export */}
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Export options</DialogTitle>
+            <DialogDescription>Download your data immediately.</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={exporting}
+              onClick={() => void handleExport('links-csv')}
+            >
+              {exporting ? (
+                <span className="flex items-center gap-2">
+                  <Spinner className="text-current" /> Exporting…
+                </span>
+              ) : (
+                'Export links only (CSV)'
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={exporting}
+              onClick={() => void handleExport('full-json')}
+            >
+              {exporting ? (
+                <span className="flex items-center gap-2">
+                  <Spinner className="text-current" /> Exporting…
+                </span>
+              ) : (
+                'Export full profile (JSON)'
+              )}
+            </Button>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setExportOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="space-y-6">
         <Card>
-          <CardHeader className="space-y-2">
+          <CardHeader className="space-y-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle>Profile</CardTitle>
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={handleCreateProfile}>
-                  New profile
-                </Button>
-                <Button type="button" variant="outline" onClick={handleDuplicateProfile}>
-                  Duplicate
-                </Button>
-                <Button type="button" variant="outline" onClick={handleExportProfile}>
-                  Export
+              <div className="space-y-1">
+                <CardTitle>Dashboard</CardTitle>
+                <CardDescription>
+                  Select a profile, manage links, and publish when ready.
+                </CardDescription>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setActionsOpen(true)}
+                  disabled={switchingProfile}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="ml-2">Actions</span>
                 </Button>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="profileSelect">Profile</Label>
-                <select
-                  id="profileSelect"
-                  className="border-input bg-background h-10 rounded-md border px-3 text-sm"
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+              <div className="space-y-1">
+                <Label>Current profile</Label>
+                <Select
                   value={profile.id}
-                  onChange={(e) => {
-                    router.push(`/dashboard?profile=${e.target.value}`);
-                    router.refresh();
-                  }}
+                  onValueChange={handleSwitchProfile}
+                  disabled={switchingProfile}
                 >
-                  {profiles.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.displayName || p.slug} {p.status === 'DISABLED' ? '(disabled)' : ''}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-12">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {profiles.map((p) => {
+                      const label = p.displayName || p.slug;
+                      const initial = (label || 'P').slice(0, 1).toUpperCase();
+                      return (
+                        <SelectItem key={p.id} value={p.id}>
+                          <span className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                'inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs',
+                                p.id === profile.id && 'border-primary',
+                              )}
+                            >
+                              {initial}
+                            </span>
+                            <span>
+                              {label} {p.status === 'DISABLED' ? '(Draft)' : ''}
+                            </span>
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <div className="text-muted-foreground text-xs">{profilesUsedText}</div>
               </div>
 
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={!isDisabled}
-                  onChange={(e) =>
-                    saveProfile({ status: e.target.checked ? 'ACTIVE' : 'DISABLED' })
-                  }
-                />
-                <span>Profile active</span>
-              </label>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant={isPublished ? 'default' : 'secondary'}
+                  className={cn(
+                    'justify-center',
+                    isPublished
+                      ? 'bg-green-600 text-white dark:bg-green-500'
+                      : 'bg-muted text-muted-foreground',
+                  )}
+                >
+                  {isPublished ? '🟢 Published' : '⚪ Draft'}
+                </Badge>
+              </div>
             </div>
           </CardHeader>
+
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="displayName">Display name</Label>
+                <Label htmlFor="displayName">Profile name</Label>
                 <Input
                   id="displayName"
                   value={profileState.displayName ?? ''}
@@ -322,11 +822,11 @@ export function ProfileEditor({
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="slug">Slug</Label>
+                <Label htmlFor="slug">Username / slug</Label>
                 <Input
                   id="slug"
                   value={profileState.slug}
-                  onChange={(e) => updateProfileDraft({ slug: e.target.value })}
+                  onChange={(e) => updateProfileDraft({ slug: slugify(e.target.value) })}
                   onBlur={() => saveProfile({ slug: profileState.slug })}
                 />
                 <div className="text-muted-foreground text-xs">
@@ -346,188 +846,123 @@ export function ProfileEditor({
               />
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-muted-foreground text-sm">Avatar shown on your public page</div>
-              <AvatarUploader
-                onUploaded={async (url) => {
-                  saveProfile({ image: url });
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Theme</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="bg">Background</Label>
-                <Input
-                  id="bg"
-                  type="color"
-                  value={profileState.themeSettings.backgroundColor || '#0b1220'}
-                  onChange={(e) =>
-                    updateProfileDraft({
-                      themeSettings: {
-                        ...profileState.themeSettings,
-                        backgroundColor: e.target.value,
-                      },
-                    })
-                  }
-                  onBlur={() => saveProfile({ themeSettings: profileState.themeSettings })}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="textColor">Text</Label>
-                <Input
-                  id="textColor"
-                  type="color"
-                  value={profileState.themeSettings.textColor || '#ffffff'}
-                  onChange={(e) =>
-                    updateProfileDraft({
-                      themeSettings: {
-                        ...profileState.themeSettings,
-                        textColor: e.target.value,
-                      },
-                    })
-                  }
-                  onBlur={() => saveProfile({ themeSettings: profileState.themeSettings })}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="buttonColor">Button</Label>
-                <Input
-                  id="buttonColor"
-                  type="color"
-                  value={profileState.themeSettings.buttonColor || '#ffffff'}
-                  onChange={(e) =>
-                    updateProfileDraft({
-                      themeSettings: {
-                        ...profileState.themeSettings,
-                        buttonColor: e.target.value,
-                      },
-                    })
-                  }
-                  onBlur={() => saveProfile({ themeSettings: profileState.themeSettings })}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="buttonTextColor">Button text</Label>
-                <Input
-                  id="buttonTextColor"
-                  type="color"
-                  value={profileState.themeSettings.buttonTextColor || '#0b1220'}
-                  onChange={(e) =>
-                    updateProfileDraft({
-                      themeSettings: {
-                        ...profileState.themeSettings,
-                        buttonTextColor: e.target.value,
-                      },
-                    })
-                  }
-                  onBlur={() => saveProfile({ themeSettings: profileState.themeSettings })}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="radius">Button radius</Label>
-                <Input
-                  id="radius"
-                  type="number"
-                  min={0}
-                  max={24}
-                  value={profileState.themeSettings.buttonRadius ?? 12}
-                  onChange={(e) =>
-                    updateProfileDraft({
-                      themeSettings: {
-                        ...profileState.themeSettings,
-                        buttonRadius: Number(e.target.value),
-                      },
-                    })
-                  }
-                  onBlur={() => saveProfile({ themeSettings: profileState.themeSettings })}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="font">Font</Label>
-                <select
-                  id="font"
-                  className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                  value={profileState.themeSettings.fontFamily || ''}
-                  onChange={(e) =>
-                    updateProfileDraft({
-                      themeSettings: {
-                        ...profileState.themeSettings,
-                        fontFamily: e.target.value || undefined,
-                      },
-                    })
-                  }
-                  onBlur={() => saveProfile({ themeSettings: profileState.themeSettings })}
-                >
-                  <option value="">Default</option>
-                  <option value="ui-sans-serif, system-ui">System</option>
-                  <option value="Inter, ui-sans-serif">Inter</option>
-                  <option value="ui-serif, Georgia">Serif</option>
-                  <option value="ui-monospace, SFMono-Regular">Mono</option>
-                </select>
-              </div>
-            </div>
-
             <div className="space-y-1">
-              <Label htmlFor="customCss">Custom CSS</Label>
-              <textarea
-                id="customCss"
-                className="border-input bg-background min-h-[120px] w-full rounded-md border px-3 py-2 font-mono text-xs"
-                value={profileState.themeSettings.customCss ?? ''}
-                onChange={(e) =>
-                  updateProfileDraft({
-                    themeSettings: { ...profileState.themeSettings, customCss: e.target.value },
+              <Label htmlFor="avatarUrl">Avatar Image URL</Label>
+              <Input
+                id="avatarUrl"
+                value={profileState.image ?? ''}
+                onChange={(e) => updateProfileDraft({ image: e.target.value })}
+                onBlur={() =>
+                  saveProfile({
+                    image: profileState.image?.trim() ? profileState.image.trim() : null,
                   })
                 }
-                onBlur={() => saveProfile({ themeSettings: profileState.themeSettings })}
+                placeholder="Paste image URL (ImgBB, Imgur, etc.)"
               />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="font-medium">Published</div>
+                <div className="text-muted-foreground text-xs">
+                  Turn off to hide your profile temporarily.
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span
+                  className={cn(
+                    'text-xs font-medium',
+                    isPublished ? 'text-green-600' : 'text-muted-foreground',
+                  )}
+                >
+                  {isPublished ? 'Published' : 'Draft'}
+                </span>
+                <Switch
+                  checked={isPublished}
+                  onCheckedChange={(checked) => {
+                    toast({
+                      title: checked ? 'Profile published' : 'Profile set to draft',
+                      description: checked
+                        ? 'Your profile is now live.'
+                        : 'Your profile is hidden (visitors will see a 404).',
+                    });
+                    saveProfile({ status: checked ? 'ACTIVE' : 'DISABLED' });
+                  }}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="links">
           <CardHeader>
-            <CardTitle>Links</CardTitle>
+            <CardTitle>📝 Manage Links</CardTitle>
+            <CardDescription>Add, edit, reorder your links</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
               <div className="space-y-1">
                 <Label htmlFor="newTitle">Title</Label>
                 <Input
+                  ref={titleInputRef}
                   id="newTitle"
                   value={newLinkTitle}
                   onChange={(e) => setNewLinkTitle(e.target.value)}
+                  placeholder="Instagram"
                 />
               </div>
+
               <div className="space-y-1">
                 <Label htmlFor="newUrl">URL</Label>
-                <Input
-                  id="newUrl"
-                  value={newLinkUrl}
-                  onChange={(e) => setNewLinkUrl(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="newUrl"
+                    value={newLinkUrl}
+                    onChange={(e) => setNewLinkUrl(e.target.value)}
+                    onBlur={() => setNewLinkUrlTouched(true)}
+                    placeholder="https://instagram.com/yourname"
+                    className={cn(newLinkUrlTouched && !newUrlValid && 'border-destructive')}
+                  />
+                  {newLinkUrl.trim() && newUrlValid ? (
+                    <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-600 dark:text-green-400" />
+                  ) : null}
+                </div>
+                {newLinkUrlTouched && newLinkUrl.trim() && !newUrlValid ? (
+                  <p className="text-destructive text-xs">
+                    Please enter a valid URL (e.g., https://instagram.com/yourname)
+                  </p>
+                ) : null}
               </div>
+
               <Button
                 type="button"
                 onClick={() => void handleCreateLink()}
-                disabled={!newLinkTitle || !newLinkUrl}
+                disabled={!newLinkTitle.trim() || !newLinkUrl.trim() || !newUrlValid || addingLink}
               >
-                Add
+                {addingLink ? (
+                  <span className="flex items-center gap-2">
+                    <Spinner className="text-current" /> Adding…
+                  </span>
+                ) : (
+                  'Add link'
+                )}
               </Button>
             </div>
 
             {linksState.length === 0 ? (
-              <div className="text-muted-foreground text-sm">No links yet.</div>
+              <div className="rounded-lg border p-6 text-center">
+                <h3 className="text-lg font-semibold">Add your first link</h3>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Example: “Instagram” → https://instagram.com/yourname
+                </p>
+                <Button
+                  type="button"
+                  className="mt-4"
+                  onClick={() => titleInputRef.current?.focus()}
+                >
+                  Add your first link
+                </Button>
+              </div>
             ) : (
               <LinksDndList
                 links={linksState}
@@ -714,9 +1149,27 @@ export function ProfileEditor({
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Profiles</CardTitle>
+            <CardDescription>Create up to 5 profiles</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-muted-foreground text-sm">{profilesUsedText}</div>
+            <Button type="button" onClick={() => setCreateOpen(true)} disabled={atProfileLimit}>
+              + Create New Profile
+            </Button>
+          </CardContent>
+          {atProfileLimit ? (
+            <CardContent className="pt-0">
+              <p className="text-muted-foreground text-sm">Maximum 5 profiles reached</p>
+            </CardContent>
+          ) : null}
+        </Card>
+
         {isPending ? (
           <div className="text-muted-foreground text-sm" aria-live="polite">
-            Saving…
+            Saving changes…
           </div>
         ) : null}
       </div>
@@ -737,14 +1190,4 @@ export function ProfileEditor({
       </div>
     </div>
   );
-}
-
-function slugifyLocal(input: string) {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
 }

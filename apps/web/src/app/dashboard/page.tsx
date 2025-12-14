@@ -86,7 +86,7 @@ export default async function DashboardPage({
         <EmptyState
           title="No profile found"
           description="We couldn't find a profile for your account."
-          action={{ label: 'Sign out', href: '/api/auth/signout' }}
+          action={{ label: 'Sign out', href: '/api/auth/signout?callbackUrl=/' }}
         />
       </div>
     );
@@ -109,7 +109,7 @@ export default async function DashboardPage({
         <EmptyState
           title="Profile not found"
           description="The requested profile doesn't exist or you don't have access."
-          action={{ label: 'Sign out', href: '/api/auth/signout' }}
+          action={{ label: 'Sign out', href: '/api/auth/signout?callbackUrl=/' }}
         />
       </div>
     );
@@ -134,28 +134,64 @@ export default async function DashboardPage({
       <div id="dashboard-header" className="space-y-3">
         <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }]} />
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Manage your public profile and links</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" asChild>
-              <a href="/dashboard/analytics">Analytics</a>
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Everything is included in Linkforest. Pick a profile and start building.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2" data-tour="actions">
+        <Card>
+          <CardHeader>
+            <CardTitle>📝 Manage Links</CardTitle>
+            <CardDescription>Add, edit, reorder your links</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full">
+              <a href={`/dashboard?profile=${profile.id}#links`}>Edit Links</a>
             </Button>
-            <Button variant="outline" asChild>
-              <a href={`/dashboard/profiles/${profile.id}/design`}>Design</a>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>🎨 Customize Design</CardTitle>
+            <CardDescription>Change colors, fonts, and layout</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full" variant="outline">
+              <a href={`/dashboard/profiles/${profile.id}/design`}>Open Designer</a>
             </Button>
-            <Button variant="outline" asChild>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>📊 View Analytics</CardTitle>
+            <CardDescription>See clicks and visitor stats</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full" variant="outline">
+              <a href={`/dashboard/analytics?profile=${profile.id}`}>View Analytics</a>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>👁️ Preview Profile</CardTitle>
+            <CardDescription>See how your page looks live</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full" variant="outline">
               <a href={`/${profile.slug}`} target="_blank" rel="noreferrer">
-                View Public Page
+                Open Profile
               </a>
             </Button>
-            <Button variant="outline" asChild>
-              <a href="/api/auth/signout">Sign Out</a>
-            </Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div data-tour="stats">

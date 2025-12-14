@@ -16,6 +16,11 @@ export async function createProfileAction(input: unknown) {
     return { ok: false as const, error: 'Validation failed', details: result.error.flatten() };
   }
 
+  const profileCount = await prisma.profile.count({ where: { userId: user.id, deletedAt: null } });
+  if (profileCount >= 5) {
+    return { ok: false as const, error: 'Maximum 5 profiles reached' };
+  }
+
   const existing = await prisma.profile.findUnique({ where: { slug: result.data.slug } });
   if (existing) {
     return { ok: false as const, error: 'Slug already in use' };
@@ -33,6 +38,31 @@ export async function createProfileAction(input: unknown) {
   revalidatePath('/dashboard');
 
   return { ok: true as const, profile };
+}
+
+export async function checkProfileSlugAvailabilityAction(slug: string) {
+  const user = await requireAuth();
+
+  const validated = createProfileSchema.shape.slug.safeParse(slug);
+  if (!validated.success) {
+    return {
+      ok: true as const,
+      available: false,
+      message: validated.error.issues[0]?.message ?? 'Invalid username',
+    };
+  }
+
+  const existing = await prisma.profile.findUnique({ where: { slug } });
+  if (existing) {
+    return { ok: true as const, available: false, message: 'Username is taken' };
+  }
+
+  const profileCount = await prisma.profile.count({ where: { userId: user.id, deletedAt: null } });
+  if (profileCount >= 5) {
+    return { ok: true as const, available: false, message: 'Maximum 5 profiles reached' };
+  }
+
+  return { ok: true as const, available: true, message: 'Username available' };
 }
 
 export async function updateProfileAction(profileId: string, input: unknown) {
@@ -244,8 +274,24 @@ export async function reorderLinksAction(input: unknown) {
   return { ok: true as const };
 }
 
-export async function duplicateProfileAction(profileId: string) {
+export async function duplicateProfileAction(profileId: string, input: unknown) {
   const user = await requireAuth();
+
+  const result = createProfileSchema.pick({ slug: true, displayName: true }).safeParse(input);
+
+  if (!result.success) {
+    return { ok: false as const, error: 'Validation failed', details: result.error.flatten() };
+  }
+
+  const profileCount = await prisma.profile.count({ where: { userId: user.id, deletedAt: null } });
+  if (profileCount >= 5) {
+    return { ok: false as const, error: 'Maximum 5 profiles reached' };
+  }
+
+  const slugOwner = await prisma.profile.findUnique({ where: { slug: result.data.slug } });
+  if (slugOwner) {
+    return { ok: false as const, error: 'Slug already in use' };
+  }
 
   const source = await prisma.profile.findFirst({
     where: { id: profileId, userId: user.id, deletedAt: null },
@@ -258,55 +304,51 @@ export async function duplicateProfileAction(profileId: string) {
     return { ok: false as const, error: 'Profile not found' };
   }
 
-  let attempt = 0;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const slug = attempt === 0 ? `${source.slug}-copy` : `${source.slug}-copy-${attempt + 1}`;
-    const existing = await prisma.profile.findUnique({ where: { slug } });
+  const profile = await prisma.$transaction(async (tx) => {
+    const created = await tx.profile.create({
+      data: {
+        userId: user.id,
+        slug: result.data.slug,
+        displayName: result.data.displayName ?? source.displayName,
+        bio: source.bio,
+        image: source.image,
+        themeSettings: source.themeSettings as any,
+        status: source.status,
+      },
+    });
 
-    if (!existing) {
-      const profile = await prisma.$transaction(async (tx) => {
-        const created = await tx.profile.create({
-          data: {
-            userId: user.id,
-            slug,
-            displayName: source.displayName ? `${source.displayName} (copy)` : null,
-            bio: source.bio,
-            image: source.image,
-            themeSettings: source.themeSettings as any,
-            status: source.status,
-          },
-        });
-
-        if (source.links.length > 0) {
-          await tx.link.createMany({
-            data: source.links.map((l) => ({
-              profileId: created.id,
-              slug: l.slug,
-              title: l.title,
-              url: l.url,
-              position: l.position,
-              metadata: l.metadata as any,
-              status: l.status,
-            })),
-          });
-        }
-
-        return created;
+    if (source.links.length > 0) {
+      await tx.link.createMany({
+        data: source.links.map((l) => ({
+          profileId: created.id,
+          slug: l.slug,
+          title: l.title,
+          url: l.url,
+          position: l.position,
+          metadata: l.metadata as any,
+          status: l.status,
+        })),
       });
-
-      revalidatePath('/dashboard');
-      return { ok: true as const, profile };
     }
 
-    attempt += 1;
-    if (attempt > 20) {
-      return { ok: false as const, error: 'Unable to duplicate profile' };
-    }
-  }
+    return created;
+  });
+
+  revalidatePath('/dashboard');
+  return { ok: true as const, profile };
 }
 
-export async function exportProfileAction(profileId: string) {
+function escapeCsv(value: string) {
+  if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+export async function exportProfileAction(
+  profileId: string,
+  format: 'links-csv' | 'full-json' = 'full-json',
+) {
   const user = await requireAuth();
 
   const profile = await prisma.profile.findFirst({
@@ -320,31 +362,55 @@ export async function exportProfileAction(profileId: string) {
     return { ok: false as const, error: 'Profile not found' };
   }
 
+  const date = new Date().toISOString().slice(0, 10);
+
+  if (format === 'links-csv') {
+    const header = ['title', 'url', 'position', 'status'];
+    const rows = profile.links.map((l) => [
+      escapeCsv(l.title),
+      escapeCsv(l.url),
+      String(l.position),
+      l.status,
+    ]);
+
+    const csv = [header.join(','), ...rows.map((r) => r.join(','))].join('\n');
+
+    return {
+      ok: true as const,
+      content: csv,
+      mimeType: 'text/csv; charset=utf-8',
+      filename: `linkforest-${profile.slug}-${date}.csv`,
+    };
+  }
+
+  const json = JSON.stringify(
+    {
+      profile: {
+        slug: profile.slug,
+        displayName: profile.displayName,
+        bio: profile.bio,
+        image: profile.image,
+        themeSettings: profile.themeSettings,
+        status: profile.status,
+      },
+      links: profile.links.map((l) => ({
+        slug: l.slug,
+        title: l.title,
+        url: l.url,
+        position: l.position,
+        metadata: l.metadata,
+        status: l.status,
+      })),
+      exportedAt: new Date().toISOString(),
+    },
+    null,
+    2,
+  );
+
   return {
     ok: true as const,
-    json: JSON.stringify(
-      {
-        profile: {
-          slug: profile.slug,
-          displayName: profile.displayName,
-          bio: profile.bio,
-          image: profile.image,
-          themeSettings: profile.themeSettings,
-          status: profile.status,
-        },
-        links: profile.links.map((l) => ({
-          slug: l.slug,
-          title: l.title,
-          url: l.url,
-          position: l.position,
-          metadata: l.metadata,
-          status: l.status,
-        })),
-        exportedAt: new Date().toISOString(),
-      },
-      null,
-      2,
-    ),
-    filename: `${profile.slug}-export.json`,
+    content: json,
+    mimeType: 'application/json; charset=utf-8',
+    filename: `linkforest-${profile.slug}-${date}.json`,
   };
 }

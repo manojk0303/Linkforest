@@ -16,11 +16,18 @@ export const linkMetadataSchema = z
   })
   .passthrough();
 
+const httpUrlSchema = z
+  .string()
+  .url()
+  .refine((value) => value.startsWith('http://') || value.startsWith('https://'), {
+    message: 'Please enter a valid URL (e.g., https://instagram.com/yourname)',
+  });
+
 export const createLinkSchema = z
   .object({
     profileId: z.string().min(1),
     title: z.string().min(1).max(120),
-    url: z.string().url(),
+    url: httpUrlSchema,
     slug: z
       .string()
       .min(2)
@@ -35,7 +42,7 @@ export const createLinkSchema = z
 export const updateLinkSchema = z
   .object({
     title: z.string().min(1).max(120).optional(),
-    url: z.string().url().optional(),
+    url: httpUrlSchema.optional(),
     status: z.enum(['ACTIVE', 'HIDDEN', 'ARCHIVED']).optional(),
     position: z.number().int().min(0).optional(),
     metadata: linkMetadataSchema.optional(),

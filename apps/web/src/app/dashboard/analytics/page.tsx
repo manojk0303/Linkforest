@@ -8,6 +8,7 @@ import { GeographicBreakdown } from './_components/geographic-breakdown';
 import { DeviceBreakdown } from './_components/device-breakdown';
 import { ReferrerSources } from './_components/referrer-sources';
 import { DateRangeSelector } from './_components/date-range-selector';
+import { AnalyticsProfileSwitcher } from './_components/profile-switcher';
 
 interface AnalyticsPageProps {
   searchParams: { range?: string; profile?: string };
@@ -32,6 +33,8 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     searchParams.profile && profiles.some((p) => p.id === searchParams.profile)
       ? searchParams.profile
       : profiles[0]?.id;
+
+  const selectedProfile = profiles.find((p) => p.id === selectedProfileId);
 
   if (!selectedProfileId || !profiles.length) {
     return (
@@ -132,23 +135,43 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     <div className="space-y-8">
       <Breadcrumbs
         items={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Analytics', href: '/dashboard/analytics' },
+          { label: 'Dashboard', href: `/dashboard?profile=${selectedProfileId}` },
+          {
+            label: selectedProfile?.displayName || selectedProfile?.slug || 'Profile',
+            href: `/dashboard?profile=${selectedProfileId}`,
+          },
+          {
+            label: 'Analytics',
+            href: `/dashboard/analytics?profile=${selectedProfileId}&range=${range}`,
+          },
         ]}
       />
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Analytics</h1>
-          <p className="text-muted-foreground">Track your link performance and audience insights</p>
+          <h1 className="text-3xl font-bold">
+            Analytics for {selectedProfile?.displayName || selectedProfile?.slug}
+          </h1>
+          <p className="text-muted-foreground">Track clicks and visitor stats for this profile</p>
         </div>
-        <div className="flex gap-2">
-          <DateRangeSelector currentRange={range} profileId={selectedProfileId} />
-          <Button variant="outline" asChild>
-            <a href={`/dashboard/analytics/export?profile=${selectedProfileId}&range=${range}`}>
-              Export CSV
-            </a>
-          </Button>
+
+        <div className="flex flex-col gap-3 sm:items-end">
+          {profiles.length > 1 ? (
+            <AnalyticsProfileSwitcher
+              profiles={profiles}
+              selectedProfileId={selectedProfileId}
+              range={range}
+            />
+          ) : null}
+
+          <div className="flex flex-wrap gap-2">
+            <DateRangeSelector currentRange={range} profileId={selectedProfileId} />
+            <Button variant="outline" asChild>
+              <a href={`/dashboard/analytics/export?profile=${selectedProfileId}&range=${range}`}>
+                Export CSV
+              </a>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -161,6 +184,22 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           <div className="text-4xl font-bold">{totalClicks.toLocaleString()}</div>
         </CardContent>
       </Card>
+
+      {totalClicks === 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>No analytics yet</CardTitle>
+            <CardDescription>Share your profile to start tracking clicks.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <a href={`/${selectedProfile?.slug}`} target="_blank" rel="noreferrer">
+                Open profile
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <AnalyticsCharts analytics={analytics} range={daysAgo} />
 

@@ -19,7 +19,7 @@ export const createProfileSchema = z.object({
     .string()
     .min(2, 'Slug must be at least 2 characters')
     .max(64, 'Slug must be at most 64 characters')
-    .regex(slugRegex, 'Slug must be lowercase and may include hyphens'),
+    .regex(slugRegex, 'Username can only contain letters, numbers, and hyphens'),
   displayName: z.string().min(1).max(80).optional(),
   bio: z.string().max(240).optional(),
 });

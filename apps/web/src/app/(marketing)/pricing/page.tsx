@@ -4,7 +4,7 @@ import { siteConfig } from '@/lib/site-config';
 
 export const metadata: Metadata = {
   title: 'Pricing',
-  description: `Simple, transparent pricing for ${siteConfig.name}. Choose the plan that's right for you.`,
+  description: `Simple, transparent pricing for ${siteConfig.name}. $5/month for everything.`,
 };
 
 export default function PricingPage() {
