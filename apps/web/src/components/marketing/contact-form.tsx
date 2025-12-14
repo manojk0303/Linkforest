@@ -38,6 +38,7 @@ export function ContactForm({ className }: ContactFormProps) {
     handleSubmit,
     formState: { errors, isValid },
     reset,
+    watch,
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
     mode: 'onChange',
@@ -126,7 +127,7 @@ export function ContactForm({ className }: ContactFormProps) {
         />
         {errors.message && <p className="text-sm text-red-500">{errors.message.message}</p>}
         <p className="text-muted-foreground text-sm">
-          {2000 - (register('message')?.value?.length || 0)} characters remaining
+          {2000 - (watch('message')?.length || 0)} characters remaining
         </p>
       </div>
 

@@ -6,13 +6,13 @@ test.describe('Marketing Site', () => {
   });
 
   test('should have correct page title and branding', async ({ page }) => {
-    await expect(page).toHaveTitle(/Linkpop/);
+    await expect(page).toHaveTitle(/Linkforest/);
 
-    // Check if Linkpop branding is present
-    await expect(page.locator('text=Linkpop')).toBeVisible();
+    // Check if Linkforest branding is present
+    await expect(page.locator('text=Linkforest')).toBeVisible();
 
     // Check if tagline is present
-    await expect(page.locator('text=Share everything in one link')).toBeVisible();
+    await expect(page.locator('text=Grow your links. Own your audience.')).toBeVisible();
   });
 
   test('navigation should work correctly', async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('Marketing Site', () => {
 
   test('CTA buttons should route to auth', async ({ page }) => {
     // Test primary CTA button in hero
-    await page.getByRole('button', { name: 'Get Started' }).click();
+    await page.getByRole('button', { name: 'Start Building' }).click();
     await expect(page).toHaveURL(/.*\/auth\/register/);
 
     // Go back and test secondary CTA
@@ -60,7 +60,7 @@ test.describe('Marketing Site', () => {
 
     // Check if pricing information is present
     await expect(page.locator('$0')).toBeVisible();
-    await expect(page.locator('$9')).toBeVisible();
+    await expect(page.locator('$5')).toBeVisible();
     await expect(page.locator('$29')).toBeVisible();
 
     // Test CTA buttons in pricing cards
@@ -136,11 +136,11 @@ test.describe('Marketing Site', () => {
     await page.goto('/faq');
 
     // Test first FAQ item
-    const firstQuestion = page.locator('button').filter({ hasText: /What is Linkpop/i });
+    const firstQuestion = page.locator('button').filter({ hasText: /What is Linkforest/i });
     await firstQuestion.click();
 
     // Check if answer is visible
-    await expect(page.locator('text=Linkpop is a link-in-bio platform')).toBeVisible();
+    await expect(page.locator('text=Linkforest is a link-in-bio platform')).toBeVisible();
 
     // Test another question
     const secondQuestion = page.locator('button').filter({ hasText: /How do I get started/i });

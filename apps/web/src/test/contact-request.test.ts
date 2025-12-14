@@ -42,7 +42,7 @@ describe('ContactRequest', () => {
           message: 'This is a test message to verify the contact form works correctly.',
           metadata: {
             userAgent: 'Mozilla/5.0',
-            referrer: 'https://linkpop.com',
+            referrer: 'https://linkforest.com',
             timestamp: new Date().toISOString(),
           },
         },
@@ -56,7 +56,7 @@ describe('ContactRequest', () => {
       );
       expect(contactRequest.metadata).toMatchObject({
         userAgent: 'Mozilla/5.0',
-        referrer: 'https://linkpop.com',
+        referrer: 'https://linkforest.com',
       });
       expect(contactRequest.createdAt).toBeInstanceOf(Date);
     });
@@ -107,7 +107,7 @@ describe('ContactRequest', () => {
         consent: true,
         metadata: {
           userAgent: 'Mozilla/5.0',
-          referrer: 'https://linkpop.com',
+          referrer: 'https://linkforest.com',
           timestamp: new Date().toISOString(),
         },
       };
@@ -209,7 +209,7 @@ describe('ContactRequest', () => {
             'This is an integration test message to verify the contact form works correctly.',
           metadata: {
             userAgent: 'Test Browser',
-            referrer: 'https://linkpop.com/contact',
+            referrer: 'https://linkforest.com/contact',
           },
         },
       });

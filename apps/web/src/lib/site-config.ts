@@ -13,39 +13,44 @@ export const siteConfig = {
     { name: 'Contact', href: '/contact' },
   ],
   cta: {
-    primary: { text: 'Get Started', href: '/auth/register' },
+    primary: { text: 'Start Building', href: '/auth/register' },
     secondary: { text: 'Learn More', href: '/how-it-works' },
   },
   features: [
     {
-      icon: 'Link',
-      title: 'Unlimited Links',
-      description: 'Share as many links as you want with our powerful link-in-bio solution.',
+      icon: 'BarChart3',
+      title: 'Real Analytics',
+      description:
+        'Track every click with detailed analytics. Country, device, referrer data included at $5/month.',
     },
     {
       icon: 'Palette',
-      title: 'Custom Design',
-      description: 'Choose from beautiful themes and customize your page to match your brand.',
+      title: 'Full Customization',
+      description:
+        'Complete design control with themes, colors, fonts, and custom CSS. Make it yours.',
     },
     {
-      icon: 'Analytics',
-      title: 'Detailed Analytics',
-      description: 'Track clicks, referrers, and geographic data for all your links.',
+      icon: 'Eye',
+      title: 'No Branding',
+      description:
+        'Your page, your brand. No Linkforest watermarks or forced branding on any plan.',
     },
     {
-      icon: 'Mobile',
-      title: 'Mobile Optimized',
-      description: 'Your Linkforest page looks great on every device with responsive design.',
+      icon: 'DollarSign',
+      title: 'One Simple Price',
+      description:
+        '$5/month for everything. No hidden fees, no tiers, no surprises. Just honest pricing.',
     },
     {
       icon: 'Zap',
       title: 'Lightning Fast',
-      description: 'Built on modern web technologies for blazing fast load times.',
+      description: 'Built on Next.js 14 for blazing fast page loads. Your audience stays engaged.',
     },
     {
       icon: 'Shield',
       title: 'Secure & Private',
-      description: 'Your data is protected with enterprise-grade security.',
+      description:
+        'Enterprise-grade security. Your data is protected and never sold to third parties.',
     },
   ],
   howItWorks: [
