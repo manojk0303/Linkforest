@@ -1,5 +1,12 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import {
+  Inter,
+  Poppins,
+  Playfair_Display,
+  Montserrat,
+  Roboto,
+  Space_Grotesk,
+} from 'next/font/google';
 
 import './globals.css';
 
@@ -7,7 +14,32 @@ import { AppShell } from '@/components/app-shell';
 import { Providers } from './providers';
 import { siteConfig } from '@/lib/site-config';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const poppins = Poppins({
+  weight: ['400', '500', '600', '700'],
+  subsets: ['latin'],
+  variable: '--font-poppins',
+});
+const playfairDisplay = Playfair_Display({
+  weight: ['400', '500', '600', '700'],
+  subsets: ['latin'],
+  variable: '--font-playfair-display',
+});
+const montserrat = Montserrat({
+  weight: ['400', '500', '600', '700'],
+  subsets: ['latin'],
+  variable: '--font-montserrat',
+});
+const roboto = Roboto({
+  weight: ['400', '500', '700'],
+  subsets: ['latin'],
+  variable: '--font-roboto',
+});
+const spaceGrotesk = Space_Grotesk({
+  weight: ['400', '500', '700'],
+  subsets: ['latin'],
+  variable: '--font-space-grotesk',
+});
 
 export const metadata: Metadata = {
   title: {
@@ -64,7 +96,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body
+        className={`${inter.variable} ${poppins.variable} ${playfairDisplay.variable} ${montserrat.variable} ${roboto.variable} ${spaceGrotesk.variable} font-sans antialiased`}
+      >
         <Providers>
           <AppShell>{children}</AppShell>
         </Providers>

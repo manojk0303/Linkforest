@@ -49,6 +49,21 @@ function getLinkMetadata(link: PreviewLink): Record<string, any> {
   return link.metadata as Record<string, any>;
 }
 
+function getFontVariable(fontFamily?: string): string {
+  if (!fontFamily) return 'var(--font-inter)';
+
+  const fontMap: Record<string, string> = {
+    Inter: 'var(--font-inter)',
+    Poppins: 'var(--font-poppins)',
+    'Playfair Display': 'var(--font-playfair-display)',
+    Montserrat: 'var(--font-montserrat)',
+    Roboto: 'var(--font-roboto)',
+    'Space Grotesk': 'var(--font-space-grotesk)',
+  };
+
+  return fontMap[fontFamily] || 'var(--font-inter)';
+}
+
 export function ProfilePreview({
   profile,
   links,
@@ -83,11 +98,13 @@ export function ProfilePreview({
   return (
     <div
       className={cn('flex min-h-screen items-center justify-center p-6', className)}
-      style={{
-        backgroundColor: theme.backgroundColor,
-        color: theme.textColor,
-        fontFamily: theme.fontFamily || undefined,
-      }}
+      style={
+        {
+          backgroundColor: theme.backgroundColor,
+          color: theme.textColor,
+          fontFamily: getFontVariable(theme.fontFamily),
+        } as React.CSSProperties
+      }
     >
       {theme.customCss ? <style dangerouslySetInnerHTML={{ __html: theme.customCss }} /> : null}
 
