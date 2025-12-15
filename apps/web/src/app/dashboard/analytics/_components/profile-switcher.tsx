@@ -34,8 +34,7 @@ export function AnalyticsProfileSwitcher({
             title: 'Switched profile',
             description: `Switched to ${p?.displayName || p?.slug}`,
           });
-          router.push(`/dashboard/analytics?profile=${id}&range=${range}`);
-          router.refresh();
+          window.location.href = `/dashboard/analytics?profile=${id}&range=${range}`;
         }}
       >
         <SelectTrigger className="h-10 min-w-[240px]">

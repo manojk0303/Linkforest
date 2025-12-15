@@ -10,6 +10,7 @@ import { normalizeThemeSettings } from '@/lib/theme-settings';
 
 import { ProfileEditor } from './_components/profile-editor';
 import { DashboardOnboardingTour } from './_components/onboarding-tour';
+import { ShareProfileCard } from './_components/share-profile-card';
 
 async function ensureDefaultProfile(userId: string, fallback: string) {
   const existing = await prisma.profile.findFirst({
@@ -193,6 +194,8 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
       </div>
+
+      <ShareProfileCard slug={profile.slug} />
 
       <div data-tour="stats">
         <CardGrid columns={3}>

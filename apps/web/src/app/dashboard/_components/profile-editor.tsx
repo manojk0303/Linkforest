@@ -372,10 +372,7 @@ export function ProfileEditor({
       description: `Switched to ${next?.displayName || next?.slug || 'profile'}`,
     });
 
-    router.push(`/dashboard?profile=${nextProfileId}`);
-    router.refresh();
-
-    setTimeout(() => setSwitchingProfile(false), 300);
+    window.location.href = `/dashboard?profile=${nextProfileId}`;
   }
 
   async function handleExport(format: 'links-csv' | 'full-json') {
