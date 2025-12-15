@@ -152,7 +152,7 @@
   }
 
   * {
-    @apply border-border;
+    @apply border-border transition-colors duration-200;
   }
 
   body {
@@ -161,6 +161,24 @@
 
   ::selection {
     background: hsl(var(--accent-200) / 0.6);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    button,
+    a,
+    input,
+    select,
+    textarea {
+      @apply transition-all duration-200 ease-in-out;
+    }
+
+    button:hover:not(:disabled) {
+      @apply -translate-y-0.5;
+    }
+
+    button:active:not(:disabled) {
+      @apply translate-y-0;
+    }
   }
 }
 

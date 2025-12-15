@@ -1,5 +1,6 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@acme/ui';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { AnimatedPage } from '@/components/animated-page';
 import { requireAuth } from '@/lib/auth-helpers';
 import { prisma } from '@/lib/prisma';
 import { AnalyticsCharts } from './_components/analytics-charts';
@@ -132,86 +133,88 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   });
 
   return (
-    <div className="space-y-8">
-      <Breadcrumbs
-        items={[
-          { label: 'Dashboard', href: `/dashboard?profile=${selectedProfileId}` },
-          {
-            label: selectedProfile?.displayName || selectedProfile?.slug || 'Profile',
-            href: `/dashboard?profile=${selectedProfileId}`,
-          },
-          {
-            label: 'Analytics',
-            href: `/dashboard/analytics?profile=${selectedProfileId}&range=${range}`,
-          },
-        ]}
-      />
+    <AnimatedPage>
+      <div className="space-y-8">
+        <Breadcrumbs
+          items={[
+            { label: 'Dashboard', href: `/dashboard?profile=${selectedProfileId}` },
+            {
+              label: selectedProfile?.displayName || selectedProfile?.slug || 'Profile',
+              href: `/dashboard?profile=${selectedProfileId}`,
+            },
+            {
+              label: 'Analytics',
+              href: `/dashboard/analytics?profile=${selectedProfileId}&range=${range}`,
+            },
+          ]}
+        />
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">
-            Analytics for {selectedProfile?.displayName || selectedProfile?.slug}
-          </h1>
-          <p className="text-muted-foreground">Track clicks and visitor stats for this profile</p>
-        </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">
+              Analytics for {selectedProfile?.displayName || selectedProfile?.slug}
+            </h1>
+            <p className="text-muted-foreground">Track clicks and visitor stats for this profile</p>
+          </div>
 
-        <div className="flex flex-col gap-3 sm:items-end">
-          {profiles.length > 1 ? (
-            <AnalyticsProfileSwitcher
-              profiles={profiles}
-              selectedProfileId={selectedProfileId}
-              range={range}
-            />
-          ) : null}
+          <div className="flex flex-col gap-3 sm:items-end">
+            {profiles.length > 1 ? (
+              <AnalyticsProfileSwitcher
+                profiles={profiles}
+                selectedProfileId={selectedProfileId}
+                range={range}
+              />
+            ) : null}
 
-          <div className="flex flex-wrap gap-2">
-            <DateRangeSelector currentRange={range} profileId={selectedProfileId} />
-            <Button variant="outline" asChild>
-              <a href={`/dashboard/analytics/export?profile=${selectedProfileId}&range=${range}`}>
-                Export CSV
-              </a>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <DateRangeSelector currentRange={range} profileId={selectedProfileId} />
+              <Button variant="outline" asChild>
+                <a href={`/dashboard/analytics/export?profile=${selectedProfileId}&range=${range}`}>
+                  Export CSV
+                </a>
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Total Clicks</CardTitle>
-          <CardDescription>{daysAgo === 0 ? 'All time' : `Last ${daysAgo} days`}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-4xl font-bold">{totalClicks.toLocaleString()}</div>
-        </CardContent>
-      </Card>
-
-      {totalClicks === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>No analytics yet</CardTitle>
-            <CardDescription>Share your profile to start tracking clicks.</CardDescription>
+            <CardTitle>Total Clicks</CardTitle>
+            <CardDescription>{daysAgo === 0 ? 'All time' : `Last ${daysAgo} days`}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild>
-              <a href={`/${selectedProfile?.slug}`} target="_blank" rel="noreferrer">
-                Open profile
-              </a>
-            </Button>
+            <div className="text-4xl font-bold">{totalClicks.toLocaleString()}</div>
           </CardContent>
         </Card>
-      ) : null}
 
-      <AnalyticsCharts analytics={analytics} range={daysAgo} />
+        {totalClicks === 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>No analytics yet</CardTitle>
+              <CardDescription>Share your profile to start tracking clicks.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild>
+                <a href={`/${selectedProfile?.slug}`} target="_blank" rel="noreferrer">
+                  Open profile
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <TopLinks links={topLinksData} />
-        <GeographicBreakdown countries={countries} />
+        <AnalyticsCharts analytics={analytics} range={daysAgo} />
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <TopLinks links={topLinksData} />
+          <GeographicBreakdown countries={countries} />
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <DeviceBreakdown devices={devices} />
+          <ReferrerSources referrers={referrers} />
+        </div>
       </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <DeviceBreakdown devices={devices} />
-        <ReferrerSources referrers={referrers} />
-      </div>
-    </div>
+    </AnimatedPage>
   );
 }

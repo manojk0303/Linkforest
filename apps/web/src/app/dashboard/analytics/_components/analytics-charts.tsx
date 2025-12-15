@@ -12,13 +12,29 @@ import {
 } from 'recharts';
 
 interface AnalyticsChartsProps {
-  analytics: Array<{ clickedAt: Date }>;
+  analytics: Array<{ clickedAt: Date }> | null | undefined;
   range: number;
 }
 
 export function AnalyticsCharts({ analytics, range }: AnalyticsChartsProps) {
   const days = range === 0 ? 30 : range;
   const chartData = [];
+
+  if (!analytics || analytics.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Click Trends</CardTitle>
+          <CardDescription>Daily click activity over the selected period</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-muted-foreground flex h-80 items-center justify-center">
+            No analytics data available
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
@@ -42,7 +58,7 @@ export function AnalyticsCharts({ analytics, range }: AnalyticsChartsProps) {
       <CardContent>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
+            <LineChart data={chartData || []}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />

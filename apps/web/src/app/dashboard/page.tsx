@@ -1,8 +1,10 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@acme/ui';
+import { Link2, Palette, BarChart3, Eye } from 'lucide-react';
 
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { CardGrid } from '@/components/ui/card-grid';
 import { EmptyState } from '@/components/ui/empty-state';
+import { AnimatedPage } from '@/components/animated-page';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-helpers';
 import { slugify } from '@/lib/slugs';
@@ -129,131 +131,161 @@ export default async function DashboardPage({
   ]);
 
   return (
-    <div className="space-y-8">
-      <DashboardOnboardingTour />
+    <AnimatedPage>
+      <div className="space-y-8">
+        <DashboardOnboardingTour />
 
-      <div id="dashboard-header" className="space-y-3">
-        <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }]} />
+        <div id="dashboard-header" className="space-y-3">
+          <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }]} />
 
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Everything is included in Linkforest. Pick a profile and start building.
-          </p>
+          <div>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">
+              Everything is included in Linkforest. Pick a profile and start building.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:gap-6" data-tour="actions">
+          <Card className="transition-shadow hover:shadow-md">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-lg p-2">
+                  <Link2 className="text-primary h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Manage Links</CardTitle>
+                  <CardDescription>Add, edit, reorder your links</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="w-full">
+                <a href={`/dashboard?profile=${profile.id}#links`}>Edit Links</a>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="transition-shadow hover:shadow-md">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-lg p-2">
+                  <Palette className="text-primary h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Customize Design</CardTitle>
+                  <CardDescription>Change colors, fonts, and layout</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="w-full" variant="outline">
+                <a href={`/dashboard/profiles/${profile.id}/design`}>Open Designer</a>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="transition-shadow hover:shadow-md">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-lg p-2">
+                  <BarChart3 className="text-primary h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">View Analytics</CardTitle>
+                  <CardDescription>See clicks and visitor stats</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="w-full" variant="outline">
+                <a href={`/dashboard/analytics?profile=${profile.id}`}>View Analytics</a>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="transition-shadow hover:shadow-md">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-lg p-2">
+                  <Eye className="text-primary h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Preview Profile</CardTitle>
+                  <CardDescription>See how your page looks live</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="w-full" variant="outline">
+                <a href={`/${profile.slug}`} target="_blank" rel="noreferrer">
+                  Open Profile
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        <ShareProfileCard slug={profile.slug} />
+
+        <div data-tour="stats">
+          <CardGrid columns={3}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Total Clicks</CardTitle>
+                <CardDescription>All-time tracked clicks</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{totalClicks}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Clicks (7d)</CardTitle>
+                <CardDescription>Last 7 days</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{clicks7d}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Links</CardTitle>
+                <CardDescription>Published + hidden</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{profile.links.length}</div>
+              </CardContent>
+            </Card>
+          </CardGrid>
+        </div>
+
+        <div data-tour="profile-editor">
+          <ProfileEditor
+            user={{ id: user.id, email: user.email, name: user.name }}
+            profiles={profiles}
+            profile={{
+              id: profile.id,
+              slug: profile.slug,
+              displayName: profile.displayName,
+              bio: profile.bio,
+              image: profile.image,
+              status: profile.status,
+              themeSettings: normalizeThemeSettings(profile.themeSettings),
+            }}
+            links={profile.links.map((l) => ({
+              id: l.id,
+              profileId: l.profileId,
+              slug: l.slug,
+              title: l.title,
+              url: l.url,
+              position: l.position,
+              metadata: l.metadata,
+              status: l.status,
+            }))}
+          />
         </div>
       </div>
-
-      <div className="grid gap-4 md:grid-cols-2" data-tour="actions">
-        <Card>
-          <CardHeader>
-            <CardTitle>📝 Manage Links</CardTitle>
-            <CardDescription>Add, edit, reorder your links</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <a href={`/dashboard?profile=${profile.id}#links`}>Edit Links</a>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>🎨 Customize Design</CardTitle>
-            <CardDescription>Change colors, fonts, and layout</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full" variant="outline">
-              <a href={`/dashboard/profiles/${profile.id}/design`}>Open Designer</a>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>📊 View Analytics</CardTitle>
-            <CardDescription>See clicks and visitor stats</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full" variant="outline">
-              <a href={`/dashboard/analytics?profile=${profile.id}`}>View Analytics</a>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>👁️ Preview Profile</CardTitle>
-            <CardDescription>See how your page looks live</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full" variant="outline">
-              <a href={`/${profile.slug}`} target="_blank" rel="noreferrer">
-                Open Profile
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <ShareProfileCard slug={profile.slug} />
-
-      <div data-tour="stats">
-        <CardGrid columns={3}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Total Clicks</CardTitle>
-              <CardDescription>All-time tracked clicks</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{totalClicks}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Clicks (7d)</CardTitle>
-              <CardDescription>Last 7 days</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{clicks7d}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Links</CardTitle>
-              <CardDescription>Published + hidden</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{profile.links.length}</div>
-            </CardContent>
-          </Card>
-        </CardGrid>
-      </div>
-
-      <div data-tour="profile-editor">
-        <ProfileEditor
-          user={{ id: user.id, email: user.email, name: user.name }}
-          profiles={profiles}
-          profile={{
-            id: profile.id,
-            slug: profile.slug,
-            displayName: profile.displayName,
-            bio: profile.bio,
-            image: profile.image,
-            status: profile.status,
-            themeSettings: normalizeThemeSettings(profile.themeSettings),
-          }}
-          links={profile.links.map((l) => ({
-            id: l.id,
-            profileId: l.profileId,
-            slug: l.slug,
-            title: l.title,
-            url: l.url,
-            position: l.position,
-            metadata: l.metadata,
-            status: l.status,
-          }))}
-        />
-      </div>
-    </div>
+    </AnimatedPage>
   );
 }
