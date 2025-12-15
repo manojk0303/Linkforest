@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Prisma } from '@prisma/client';
-import { CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { CheckCircle2, MoreHorizontal, Link as LinkIcon, Plus } from 'lucide-react';
 
 import {
   Badge,
@@ -473,8 +473,7 @@ export function ProfileEditor({
       });
 
       setCreateOpen(false);
-      router.push(`/dashboard?profile=${result.profile.id}`);
-      router.refresh();
+      window.location.href = `/dashboard?profile=${result.profile.id}`;
     } finally {
       setCreateSubmitting(false);
     }
@@ -504,8 +503,7 @@ export function ProfileEditor({
 
       setDuplicateOpen(false);
       setActionsOpen(false);
-      router.push(`/dashboard?profile=${result.profile.id}`);
-      router.refresh();
+      window.location.href = `/dashboard?profile=${result.profile.id}`;
     } finally {
       setDuplicateSubmitting(false);
     }
@@ -947,17 +945,22 @@ export function ProfileEditor({
             </div>
 
             {linksState.length === 0 ? (
-              <div className="rounded-lg border p-6 text-center">
-                <h3 className="text-lg font-semibold">Add your first link</h3>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  Example: “Instagram” → https://instagram.com/yourname
+              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+                <div className="bg-primary/10 mb-4 rounded-full p-3">
+                  <LinkIcon className="text-primary h-8 w-8" />
+                </div>
+                <h3 className="text-lg font-semibold">No links yet</h3>
+                <p className="text-muted-foreground mt-2 max-w-xs text-sm">
+                  Start building your Linkforest by adding your first link
                 </p>
                 <Button
                   type="button"
-                  className="mt-4"
+                  size="lg"
+                  className="mt-6"
                   onClick={() => titleInputRef.current?.focus()}
                 >
-                  Add your first link
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Your First Link
                 </Button>
               </div>
             ) : (
