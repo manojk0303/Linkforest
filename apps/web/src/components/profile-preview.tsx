@@ -100,9 +100,10 @@ export function ProfilePreview({
       className={cn('flex min-h-screen items-center justify-center p-6', className)}
       style={
         {
-          backgroundColor: theme.backgroundColor,
+          background: theme.backgroundColor,
           color: theme.textColor,
           fontFamily: getFontVariable(theme.fontFamily),
+          colorScheme: 'light',
         } as React.CSSProperties
       }
     >
@@ -150,7 +151,7 @@ export function ProfilePreview({
               href={`/api/links/${l.id}/click`}
               className="block w-full px-4 py-3 text-center text-sm font-medium shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
               style={{
-                backgroundColor: theme.buttonColor,
+                background: theme.buttonColor,
                 color: theme.buttonTextColor,
                 borderRadius: theme.buttonRadius,
               }}

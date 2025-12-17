@@ -5,6 +5,8 @@ import { ProfilePreview } from '@/components/profile-preview';
 import { prisma } from '@/lib/prisma';
 import { normalizeThemeSettings } from '@/lib/theme-settings';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({
   params,
 }: {
