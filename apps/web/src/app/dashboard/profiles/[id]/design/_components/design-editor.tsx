@@ -10,6 +10,11 @@ import {
   CardTitle,
   Input,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   toast,
 } from '@acme/ui';
 import { ThemeSettings } from '@/lib/theme-settings';
@@ -45,7 +50,7 @@ const themePresets = [
       buttonColor: '#000000',
       buttonTextColor: '#ffffff',
       buttonRadius: 8,
-      fontFamily: 'Inter',
+      fontFamily: 'Outfit',
     },
   },
   {
@@ -78,7 +83,7 @@ const themePresets = [
       buttonColor: '#3b82f6',
       buttonTextColor: '#ffffff',
       buttonRadius: 12,
-      fontFamily: 'Inter',
+      fontFamily: 'Outfit',
     },
   },
   {
@@ -106,6 +111,7 @@ const themePresets = [
 ];
 
 const fontOptions = [
+  'Outfit',
   'Inter',
   'Poppins',
   'Playfair Display',
@@ -113,6 +119,20 @@ const fontOptions = [
   'Roboto',
   'Space Grotesk',
 ];
+
+function getFontVariable(fontFamily?: string): string {
+  if (!fontFamily) return 'var(--font-outfit)';
+  const fontMap: Record<string, string> = {
+    Outfit: 'var(--font-outfit)',
+    Inter: 'var(--font-inter)',
+    Poppins: 'var(--font-poppins)',
+    'Playfair Display': 'var(--font-playfair-display)',
+    Montserrat: 'var(--font-montserrat)',
+    Roboto: 'var(--font-roboto)',
+    'Space Grotesk': 'var(--font-space-grotesk)',
+  };
+  return fontMap[fontFamily] || 'var(--font-outfit)';
+}
 
 export function DesignEditor({ profile, links }: DesignEditorProps) {
   const router = useRouter();
@@ -263,18 +283,25 @@ export function DesignEditor({ profile, links }: DesignEditorProps) {
           <CardContent>
             <div className="space-y-2">
               <Label htmlFor="font">Font Family</Label>
-              <select
-                id="font"
-                value={settings.fontFamily || 'Inter'}
-                onChange={(e) => setSettings({ ...settings, fontFamily: e.target.value })}
-                className="bg-background border-input ring-offset-background placeholder:text-muted-foreground focus:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              <Select
+                value={settings.fontFamily || 'Outfit'}
+                onValueChange={(value) => setSettings({ ...settings, fontFamily: value })}
               >
-                {fontOptions.map((font) => (
-                  <option key={font} value={font}>
-                    {font}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="font">
+                  <SelectValue placeholder="Select a font" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fontOptions.map((font) => (
+                    <SelectItem
+                      key={font}
+                      value={font}
+                      style={{ fontFamily: getFontVariable(font) }}
+                    >
+                      {font}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>

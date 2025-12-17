@@ -13,7 +13,7 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['var(--font-sans)'],
+        sans: ['var(--font-outfit)', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',
