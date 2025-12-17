@@ -115,14 +115,14 @@ export function LoginForm() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Button
+            {/* <Button
               type="button"
               variant="outline"
               onClick={() => handleOAuthSignIn('github')}
               disabled={isLoading}
             >
               GitHub
-            </Button>
+            </Button> */}
             <Button
               type="button"
               variant="outline"
