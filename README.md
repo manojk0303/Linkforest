@@ -11,14 +11,18 @@ Production-ready link management platform with:
 - Docker Compose Postgres
 - GitHub Actions CI (lint, typecheck, test, build, e2e)
 
-## ⚡ Quick Fix: Database Migration Error?
+## ⚡ Database Status
 
-If you're seeing **"The column `User.isPaid` does not exist"**, see [QUICK_START.md](./QUICK_START.md) for a 2-minute fix.
+✅ **Database is in a stable state!** (Reset: December 17, 2024)
+
+All migrations have been consolidated into a single clean initial migration. No P3006 or syntax errors.
 
 ```bash
-# Quick fix:
-./apply-migration.sh
+# Verify database state:
+./verify-db.sh
 ```
+
+If you need to troubleshoot, see [MIGRATION_RESET_SUMMARY.md](./MIGRATION_RESET_SUMMARY.md).
 
 ## Prerequisites
 
@@ -61,17 +65,12 @@ pnpm --filter web prisma migrate dev
 pnpm --filter web prisma db seed
 ```
 
-**Quick migration script** (if you encounter "column does not exist" errors):
-
-```bash
-./apply-migration.sh
-```
-
-Or manually from `apps/web`:
+Or use shortcuts from `apps/web`:
 
 ```bash
 cd apps/web
-pnpm db:migrate
+pnpm db:migrate  # Apply migrations
+pnpm db:seed     # Seed data
 ```
 
 For production/CI (non-interactive):
@@ -80,7 +79,10 @@ For production/CI (non-interactive):
 pnpm --filter web prisma migrate deploy
 ```
 
-📚 **Having migration issues?** See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for detailed troubleshooting.
+📚 **Migration documentation:**
+
+- [MIGRATION_RESET_SUMMARY.md](./MIGRATION_RESET_SUMMARY.md) - Database reset details
+- [apps/web/prisma/migrations/README.md](./apps/web/prisma/migrations/README.md) - Migration guide
 
 5. Run the app
 
