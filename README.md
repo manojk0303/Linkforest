@@ -1,15 +1,24 @@
-# Next.js 14 + TypeScript + Tailwind + shadcn-style UI (Monorepo)
+# Linkforest - Your Link-in-Bio Platform
 
-Production-ready starter with:
+Production-ready link management platform with:
 
 - Next.js 14 (App Router) + TypeScript
 - Tailwind CSS with CSS variable theme tokens + dark mode
 - shadcn/ui-style primitives in `packages/ui`
-- Prisma (Postgres) + NextAuth (placeholder)
+- Prisma (Postgres) + NextAuth
 - ESLint + Prettier + lint-staged + Husky
 - Vitest (unit) + Playwright (E2E)
 - Docker Compose Postgres
 - GitHub Actions CI (lint, typecheck, test, build, e2e)
+
+## ⚡ Quick Fix: Database Migration Error?
+
+If you're seeing **"The column `User.isPaid` does not exist"**, see [QUICK_START.md](./QUICK_START.md) for a 2-minute fix.
+
+```bash
+# Quick fix:
+./apply-migration.sh
+```
 
 ## Prerequisites
 
@@ -52,11 +61,26 @@ pnpm --filter web prisma migrate dev
 pnpm --filter web prisma db seed
 ```
 
+**Quick migration script** (if you encounter "column does not exist" errors):
+
+```bash
+./apply-migration.sh
+```
+
+Or manually from `apps/web`:
+
+```bash
+cd apps/web
+pnpm db:migrate
+```
+
 For production/CI (non-interactive):
 
 ```bash
 pnpm --filter web prisma migrate deploy
 ```
+
+📚 **Having migration issues?** See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for detailed troubleshooting.
 
 5. Run the app
 

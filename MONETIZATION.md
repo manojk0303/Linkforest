@@ -283,6 +283,7 @@ VERCEL_ENV=production
 
 3. **Setup Cron Jobs** (Vercel Enterprise)
    - Create or update `vercel.json`:
+
    ```json
    {
      "crons": [
