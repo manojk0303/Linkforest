@@ -7,3 +7,7 @@ playwright-report
 test-results
 *.sh
 .prettierignore
+
+# Prisma migrations
+apps/web/prisma/migrations/**/*.sql
+apps/web/prisma/migrations/migration_lock.toml
