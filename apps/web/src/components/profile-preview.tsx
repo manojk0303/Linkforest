@@ -50,9 +50,10 @@ function getLinkMetadata(link: PreviewLink): Record<string, any> {
 }
 
 function getFontVariable(fontFamily?: string): string {
-  if (!fontFamily) return 'var(--font-inter)';
+  if (!fontFamily) return 'var(--font-outfit)';
 
   const fontMap: Record<string, string> = {
+    Outfit: 'var(--font-outfit)',
     Inter: 'var(--font-inter)',
     Poppins: 'var(--font-poppins)',
     'Playfair Display': 'var(--font-playfair-display)',
@@ -61,7 +62,7 @@ function getFontVariable(fontFamily?: string): string {
     'Space Grotesk': 'var(--font-space-grotesk)',
   };
 
-  return fontMap[fontFamily] || 'var(--font-inter)';
+  return fontMap[fontFamily] || 'var(--font-outfit)';
 }
 
 export function ProfilePreview({

@@ -6,6 +6,7 @@ import {
   Montserrat,
   Roboto,
   Space_Grotesk,
+  Outfit,
 } from 'next/font/google';
 
 import './globals.css';
@@ -15,6 +16,7 @@ import { Providers } from './providers';
 import { siteConfig } from '@/lib/site-config';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 const poppins = Poppins({
   weight: ['400', '500', '600', '700'],
   subsets: ['latin'],
@@ -97,7 +99,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${poppins.variable} ${playfairDisplay.variable} ${montserrat.variable} ${roboto.variable} ${spaceGrotesk.variable} font-sans antialiased`}
+        className={`${inter.variable} ${outfit.variable} ${poppins.variable} ${playfairDisplay.variable} ${montserrat.variable} ${roboto.variable} ${spaceGrotesk.variable} font-sans antialiased`}
       >
         <Providers>
           <AppShell>{children}</AppShell>

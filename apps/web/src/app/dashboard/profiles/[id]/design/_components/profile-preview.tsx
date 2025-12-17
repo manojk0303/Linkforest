@@ -21,6 +21,20 @@ interface ProfilePreviewProps {
   settings: ThemeSettings;
 }
 
+function getFontVariable(fontFamily?: string): string {
+  if (!fontFamily) return 'var(--font-outfit)';
+  const fontMap: Record<string, string> = {
+    Outfit: 'var(--font-outfit)',
+    Inter: 'var(--font-inter)',
+    Poppins: 'var(--font-poppins)',
+    'Playfair Display': 'var(--font-playfair-display)',
+    Montserrat: 'var(--font-montserrat)',
+    Roboto: 'var(--font-roboto)',
+    'Space Grotesk': 'var(--font-space-grotesk)',
+  };
+  return fontMap[fontFamily] || 'var(--font-outfit)';
+}
+
 export function ProfilePreview({ profile, links, settings }: ProfilePreviewProps) {
   const isGradient = settings.backgroundColor?.includes('gradient');
 
@@ -31,7 +45,7 @@ export function ProfilePreview({ profile, links, settings }: ProfilePreviewProps
         style={{
           background: settings.backgroundColor || '#0b1220',
           color: settings.textColor || '#ffffff',
-          fontFamily: settings.fontFamily || 'Inter',
+          fontFamily: getFontVariable(settings.fontFamily),
         }}
       >
         {profile.image && (
