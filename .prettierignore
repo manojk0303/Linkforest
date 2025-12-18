@@ -8,6 +8,7 @@ test-results
 *.sh
 .prettierignore
 
-# Prisma migrations
+# Prisma
+apps/web/prisma/schema.prisma
 apps/web/prisma/migrations/**/*.sql
 apps/web/prisma/migrations/migration_lock.toml

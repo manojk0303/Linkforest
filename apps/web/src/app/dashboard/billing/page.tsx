@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@acme/ui';
 
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
@@ -11,7 +13,10 @@ export default async function BillingPage() {
   const user = await requireAuth();
 
   const [dbUser, subscription] = await Promise.all([
-    prisma.user.findUnique({ where: { id: user.id }, select: { isPaid: true } }),
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: { subscriptionTier: true, subscriptionStatus: true },
+    }),
     prisma.subscription.findFirst({
       where: { userId: user.id },
       select: {
@@ -24,8 +29,18 @@ export default async function BillingPage() {
     }),
   ]);
 
-  const isPaid = dbUser?.isPaid ?? false;
-  const currentStatus = subscription?.status || (isPaid ? 'ACTIVE' : 'INACTIVE');
+  const subscriptionTier = dbUser?.subscriptionTier ?? 'FREE';
+  const subscriptionStatus = dbUser?.subscriptionStatus ?? 'ACTIVE';
+  const isPro = subscriptionTier === 'PRO';
+
+  const planName = isPro ? 'Linkforest PRO' : 'Linkforest FREE';
+  const planPrice = isPro ? '$9 / month' : '$0 / month';
+
+  const statusLabel = isPro
+    ? subscriptionStatus === 'ACTIVE'
+      ? 'Active'
+      : subscriptionStatus.toLowerCase()
+    : 'Free';
 
   return (
     <div className="space-y-8">
@@ -39,8 +54,8 @@ export default async function BillingPage() {
 
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Billing & Subscription</h1>
-            <p className="text-muted-foreground">Manage your $5/month Linkforest subscription</p>
+            <h1 className="text-3xl font-bold">Billing & Plan</h1>
+            <p className="text-muted-foreground">Manage your Linkforest plan</p>
           </div>
           <Button variant="outline" asChild>
             <a href="/dashboard">Back to Dashboard</a>
@@ -51,30 +66,28 @@ export default async function BillingPage() {
       <Card>
         <CardHeader>
           <CardTitle>Current Plan</CardTitle>
-          <CardDescription>Your current subscription details</CardDescription>
+          <CardDescription>Your current plan details</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-muted-foreground text-sm">Plan</p>
-                <p className="mt-1 text-2xl font-bold">Linkforest Pro</p>
-                <p className="text-muted-foreground mt-1 text-sm">$5 / month</p>
+                <p className="mt-1 text-2xl font-bold">{planName}</p>
+                <p className="text-muted-foreground mt-1 text-sm">{planPrice}</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-sm">Status</p>
                 <p
                   className={`mt-1 text-lg font-semibold ${
-                    isPaid
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-yellow-600 dark:text-yellow-400'
+                    isPro ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
                   }`}
                 >
-                  {isPaid ? 'Active' : 'Not subscribed'}
+                  {statusLabel}
                 </p>
                 {subscription?.status && (
                   <p className="text-muted-foreground mt-1 text-xs">
-                    Subscription status: {subscription.status}
+                    Provider status: {subscription.status}
                   </p>
                 )}
               </div>
@@ -91,12 +104,60 @@ export default async function BillingPage() {
               </div>
             )}
 
-            <BillingActions isPaid={isPaid} subscriptionId={subscription?.id} />
+            <BillingActions isPro={isPro} subscriptionId={subscription?.id} />
           </div>
         </CardContent>
       </Card>
 
-      <FeatureComparison />
+      <FeatureComparison isPro={isPro} />
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Custom Scripts</CardTitle>
+            <CardDescription>Add custom JavaScript to your profile (PRO only)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isPro ? (
+              <p className="text-muted-foreground text-sm">
+                You have access to custom JavaScript injection.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-muted-foreground text-sm">
+                  This is a PRO feature. Upgrade to inject tracking pixels and custom scripts.
+                </p>
+                <Button asChild>
+                  <Link href="/pricing">Upgrade - $9/mo</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>URL Shortener</CardTitle>
+            <CardDescription>Create short links inside Linkforest (PRO only)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isPro ? (
+              <p className="text-muted-foreground text-sm">
+                You have access to the built-in URL shortener.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-muted-foreground text-sm">
+                  This is a PRO feature. Upgrade to create branded short links.
+                </p>
+                <Button asChild>
+                  <Link href="/pricing">Upgrade - $9/mo</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
@@ -116,9 +177,11 @@ export default async function BillingPage() {
               <p className="text-muted-foreground mt-1 text-xs">Add as many links as you want</p>
             </div>
             <div>
-              <p className="text-muted-foreground text-sm">Analytics</p>
-              <p className="mt-1 text-2xl font-bold">Included</p>
-              <p className="text-muted-foreground mt-1 text-xs">Track clicks and visitors</p>
+              <p className="text-muted-foreground text-sm">Analytics retention</p>
+              <p className="mt-1 text-2xl font-bold">{isPro ? '365 days' : '7 days'}</p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Upgrade to PRO to keep a full year
+              </p>
             </div>
           </div>
         </CardContent>

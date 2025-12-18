@@ -11,7 +11,7 @@ export interface FeatureFlags {
   maxLinks: number;
 }
 
-// Linkforest has a single tier ($5/mo) and all features are included.
+// Feature flags are currently static. Pricing tier enforcement is handled via subscriptionTier.
 export const FULL_FEATURES: FeatureFlags = {
   basicAnalytics: true,
   linkTracking: true,

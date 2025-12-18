@@ -115,6 +115,8 @@ export const authOptions: NextAuthOptions = {
           token.image = dbUser.image || '';
           token.role = dbUser.role;
           token.status = dbUser.status;
+          token.subscriptionTier = dbUser.subscriptionTier;
+          token.subscriptionStatus = dbUser.subscriptionStatus;
         }
       }
 
@@ -132,6 +134,8 @@ export const authOptions: NextAuthOptions = {
         session.user.image = token.image as string;
         session.user.role = token.role as string;
         session.user.status = token.status as string;
+        session.user.subscriptionTier = token.subscriptionTier as string;
+        session.user.subscriptionStatus = token.subscriptionStatus as string;
       }
 
       return session;
