@@ -7,7 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum SubscriptionTier {
+  FREE
+  PRO
+}
+
 enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+enum StripeSubscriptionStatus {
   TRIALING
   ACTIVE
   PAST_DUE
@@ -63,9 +74,11 @@ model User {
   image         String?
   password      String?
 
-  role            UserRole         @default(USER)
-  status          UserStatus       @default(ACTIVE)
-  subscriptionTier SubscriptionTier @default(FREE)
+  role   UserRole   @default(USER)
+  status UserStatus @default(ACTIVE)
+
+  subscriptionTier   SubscriptionTier   @default(FREE)
+  subscriptionStatus SubscriptionStatus @default(ACTIVE)
 
   deletedAt DateTime?
 
@@ -206,7 +219,7 @@ model Subscription {
   id     String @id @default(cuid())
   userId String
 
-  status SubscriptionStatus @default(ACTIVE)
+  status StripeSubscriptionStatus @default(ACTIVE)
 
   provider               String  @default("stripe")
   providerCustomerId     String? @map("provider_customer_id")

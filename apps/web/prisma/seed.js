@@ -97,7 +97,10 @@ async function main() {
     createdLinks.push(created);
   }
 
-  await prisma.user.update({ where: { id: user.id }, data: { isPaid: true } });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { subscriptionTier: 'PRO', subscriptionStatus: 'ACTIVE' },
+  });
 
   await prisma.subscription.upsert({
     where: { providerSubscriptionId: 'sub_demo' },

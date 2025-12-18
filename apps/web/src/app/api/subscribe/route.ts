@@ -64,7 +64,14 @@ export async function POST(request: NextRequest) {
 
         if (user) {
           const normalizedStatus = status.toUpperCase() as any;
-          const isPaid = status === 'active' || status === 'trialing';
+          const isPro = status === 'active' || status === 'trialing';
+
+          const subscriptionTier = isPro ? 'PRO' : 'FREE';
+          const subscriptionStatus = isPro
+            ? 'ACTIVE'
+            : status === 'incomplete_expired' || status === 'unpaid'
+              ? 'EXPIRED'
+              : 'CANCELLED';
 
           await prisma.$transaction([
             prisma.subscription.upsert({
@@ -93,7 +100,7 @@ export async function POST(request: NextRequest) {
             }),
             prisma.user.update({
               where: { id: user.id },
-              data: { subscriptionTier: 'PRO' },
+              data: { subscriptionTier, subscriptionStatus },
             }),
           ]);
         }
@@ -120,7 +127,7 @@ export async function POST(request: NextRequest) {
         if (existing?.userId) {
           await prisma.user.update({
             where: { id: existing.userId },
-            data: { subscriptionTier: 'FREE' },
+            data: { subscriptionTier: 'FREE', subscriptionStatus: 'CANCELLED' },
           });
         }
       }
@@ -144,7 +151,7 @@ export async function POST(request: NextRequest) {
       const { action } = body;
 
       if (action === 'create-checkout') {
-        // Linkforest has one plan only ($5/mo).
+        // Linkforest PRO is $9/mo.
         // In a real implementation, you'd create a Stripe Checkout Session here.
         return NextResponse.json({
           checkoutUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard/billing`,
@@ -190,7 +197,7 @@ export async function GET(request: NextRequest) {
     const [user, subscription] = await Promise.all([
       prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { subscriptionTier: true },
+        select: { subscriptionTier: true, subscriptionStatus: true },
       }),
       prisma.subscription.findFirst({
         where: { userId: session.user.id },
@@ -203,13 +210,17 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    const subscriptionTier = user?.subscriptionTier ?? 'FREE';
+
     return NextResponse.json({
-      isPaid: user?.subscriptionTier === 'PRO',
-      status: subscription?.status ?? null,
+      subscriptionTier,
+      subscriptionStatus: user?.subscriptionStatus ?? 'ACTIVE',
+      isPro: subscriptionTier === 'PRO',
+      providerStatus: subscription?.status ?? null,
       currentPeriodStart: subscription?.currentPeriodStart ?? null,
       currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
       cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
-      price: 5,
+      price: 9,
       currency: 'USD',
       interval: 'month',
     });

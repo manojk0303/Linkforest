@@ -10,6 +10,8 @@ declare module 'next-auth' {
       image: string;
       role: string;
       status: string;
+      subscriptionTier: string;
+      subscriptionStatus: string;
     };
   }
 
@@ -20,6 +22,8 @@ declare module 'next-auth' {
     image: string | null;
     role?: string;
     status?: string;
+    subscriptionTier?: string;
+    subscriptionStatus?: string;
   }
 }
 
@@ -31,5 +35,7 @@ declare module 'next-auth/jwt' {
     image: string;
     role: string;
     status: string;
+    subscriptionTier: string;
+    subscriptionStatus: string;
   }
 }

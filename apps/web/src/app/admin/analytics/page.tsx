@@ -118,30 +118,28 @@ export default async function AdminAnalyticsPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Paid Users</CardTitle>
+            <CardTitle className="text-sm font-medium">PRO Users</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{paidUsers}</div>
-            <p className="text-muted-foreground mt-1 text-xs">Unpaid: {unpaidUsers}</p>
+            <p className="text-muted-foreground mt-1 text-xs">FREE: {unpaidUsers}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Paid Status</CardTitle>
-          <CardDescription>
-            Linkforest has one plan ($5/mo) — users are either paid or unpaid.
-          </CardDescription>
+          <CardTitle>Tier Breakdown</CardTitle>
+          <CardDescription>Linkforest has two tiers: FREE ($0) and PRO ($9/mo).</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-lg border p-4">
-              <h3 className="font-semibold">Paid</h3>
+              <h3 className="font-semibold">PRO</h3>
               <p className="mt-2 text-2xl font-bold">{paidUsers}</p>
             </div>
             <div className="rounded-lg border p-4">
-              <h3 className="font-semibold">Unpaid</h3>
+              <h3 className="font-semibold">FREE</h3>
               <p className="mt-2 text-2xl font-bold">{unpaidUsers}</p>
             </div>
           </div>

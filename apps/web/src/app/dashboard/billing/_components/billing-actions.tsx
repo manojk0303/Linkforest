@@ -1,14 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Button, toast } from '@acme/ui';
 
 interface BillingActionsProps {
-  isPaid: boolean;
+  isPro: boolean;
   subscriptionId?: string;
 }
 
-export function BillingActions({ isPaid, subscriptionId }: BillingActionsProps) {
+export function BillingActions({ isPro, subscriptionId }: BillingActionsProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,14 +85,19 @@ export function BillingActions({ isPaid, subscriptionId }: BillingActionsProps) 
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       <div className="flex flex-wrap gap-2">
-        {isPaid && subscriptionId ? (
+        {isPro && subscriptionId ? (
           <Button variant="outline" onClick={handleBillingPortal} disabled={loading}>
             {loading ? 'Opening…' : 'Manage Billing'}
           </Button>
         ) : (
-          <Button onClick={handleSubscribe} disabled={loading}>
-            {loading ? 'Starting checkout…' : 'Subscribe for $5/month'}
-          </Button>
+          <>
+            <Button onClick={handleSubscribe} disabled={loading}>
+              {loading ? 'Starting checkout…' : 'Upgrade to PRO - $9/mo'}
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/pricing">See plan details</Link>
+            </Button>
+          </>
         )}
       </div>
     </div>

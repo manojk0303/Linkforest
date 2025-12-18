@@ -3,7 +3,10 @@ import { getFeatureFlags } from './feature-flags';
 
 export async function getUserSubscription(userId: string) {
   const [user, subscription] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { subscriptionTier: true } }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { subscriptionTier: true, subscriptionStatus: true },
+    }),
     prisma.subscription.findFirst({
       where: { userId },
       select: {
@@ -16,9 +19,13 @@ export async function getUserSubscription(userId: string) {
     }),
   ]);
 
+  const subscriptionTier = user?.subscriptionTier ?? 'FREE';
+
   return {
-    isPaid: user?.subscriptionTier === 'PRO',
-    status: subscription?.status ?? null,
+    subscriptionTier,
+    subscriptionStatus: user?.subscriptionStatus ?? 'ACTIVE',
+    isPro: subscriptionTier === 'PRO',
+    providerStatus: subscription?.status ?? null,
     currentPeriodStart: subscription?.currentPeriodStart ?? null,
     currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
     cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
@@ -32,8 +39,12 @@ export async function canUserCreateLink(_userId: string): Promise<boolean> {
 }
 
 export async function isSubscriptionActive(userId: string): Promise<boolean> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isPaid: true } });
-  return user?.isPaid ?? false;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { subscriptionTier: true, subscriptionStatus: true },
+  });
+
+  return user?.subscriptionTier === 'PRO' && user.subscriptionStatus === 'ACTIVE';
 }
 
 export async function getUserLinkCount(userId: string): Promise<number> {
