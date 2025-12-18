@@ -1,8 +1,18 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@acme/ui';
+import Link from 'next/link';
+import type { SubscriptionTier } from '@prisma/client';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@acme/ui';
+import { BarChart3, Zap } from 'lucide-react';
+
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { AnimatedPage } from '@/components/animated-page';
 import { requireAuth } from '@/lib/auth-helpers';
+import {
+  getAnalyticsRetentionCutoffDate,
+  getAnalyticsRetentionDays,
+  getEffectiveStartDate,
+} from '@/lib/analytics-retention';
 import { prisma } from '@/lib/prisma';
+
 import { AnalyticsCharts } from './_components/analytics-charts';
 import { TopLinks } from './_components/top-links';
 import { GeographicBreakdown } from './_components/geographic-breakdown';
@@ -17,6 +27,11 @@ interface AnalyticsPageProps {
 
 export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
   const user = await requireAuth();
+
+  const subscriptionTier = (user.subscriptionTier as SubscriptionTier | undefined) ?? 'FREE';
+  const retentionDays = getAnalyticsRetentionDays(subscriptionTier);
+  const retentionCutoffDate = getAnalyticsRetentionCutoffDate(subscriptionTier);
+
   const range = searchParams.range || '7';
   const daysAgo = parseInt(range);
 
@@ -54,8 +69,23 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     );
   }
 
-  const startDate =
+  const requestedStartDate =
     daysAgo === 0 ? new Date(0) : new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+
+  const startDate = getEffectiveStartDate({
+    requestedStartDate,
+    retentionCutoffDate,
+  });
+
+  const isRetentionLimitingRange = requestedStartDate < retentionCutoffDate;
+
+  const totalClicksDescription = (() => {
+    if (daysAgo === 0) return `Last ${retentionDays} days`;
+    if (isRetentionLimitingRange) {
+      return `Last ${daysAgo} days (limited to ${retentionDays} days)`;
+    }
+    return `Last ${daysAgo} days`;
+  })();
 
   const [totalClicks, analytics, topLinks, countries, devices, referrers] = await Promise.all([
     prisma.analytics.count({
@@ -150,11 +180,24 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         />
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">
-              Analytics for {selectedProfile?.displayName || selectedProfile?.slug}
-            </h1>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-bold">
+                Analytics for {selectedProfile?.displayName || selectedProfile?.slug}
+              </h1>
+              <Badge variant="secondary" className="gap-1">
+                <BarChart3 className="h-3.5 w-3.5" />
+                Last {retentionDays} Days
+              </Badge>
+            </div>
             <p className="text-muted-foreground">Track clicks and visitor stats for this profile</p>
+            {subscriptionTier === 'PRO' ? (
+              <p className="text-muted-foreground text-sm">Viewing full year of analytics.</p>
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                Viewing last 7 days. Upgrade to PRO for 1-year history.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-3 sm:items-end">
@@ -177,10 +220,32 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           </div>
         </div>
 
+        {subscriptionTier === 'FREE' ? (
+          <Card className="border-primary bg-primary/5">
+            <CardContent className="pt-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-4">
+                  <Zap className="text-primary mt-1 h-7 w-7" />
+                  <div>
+                    <h3 className="font-semibold">Don't lose your funnel data</h3>
+                    <p className="text-muted-foreground text-sm">
+                      Unlock 1-year analytics retention, custom JavaScript injection, and a built-in
+                      URL shortener.
+                    </p>
+                  </div>
+                </div>
+                <Button asChild>
+                  <Link href="/pricing">Upgrade - $9/mo</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
         <Card>
           <CardHeader>
             <CardTitle>Total Clicks</CardTitle>
-            <CardDescription>{daysAgo === 0 ? 'All time' : `Last ${daysAgo} days`}</CardDescription>
+            <CardDescription>{totalClicksDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold">{totalClicks.toLocaleString()}</div>
@@ -203,7 +268,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           </Card>
         ) : null}
 
-        <AnalyticsCharts analytics={analytics} range={daysAgo} />
+        <AnalyticsCharts analytics={analytics} range={daysAgo} retentionDays={retentionDays} />
 
         <div className="grid gap-6 md:grid-cols-2">
           <TopLinks links={topLinksData} />

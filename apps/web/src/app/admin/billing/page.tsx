@@ -22,7 +22,7 @@ export default async function AdminBillingPage() {
 
   // Calculate revenue metrics (simplified - no actual Stripe amounts)
   const totalActive = subscriptions.filter((s) => s.status === 'ACTIVE').length;
-  const monthlyRecurring = totalActive * 5; // $5/month single plan
+  const monthlyRecurring = totalActive * 9; // $9/month PRO plan
 
   const statusBreakdown = subscriptions.reduce(
     (acc, sub) => {
@@ -90,17 +90,19 @@ export default async function AdminBillingPage() {
       <Card>
         <CardHeader>
           <CardTitle>Plan</CardTitle>
-          <CardDescription>Linkforest has one plan: $5/month.</CardDescription>
+          <CardDescription>
+            Linkforest PRO is $9/month. (FREE users have no subscription record.)
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-muted-foreground text-sm">Name</p>
-              <p className="mt-1 text-lg font-semibold">Linkforest Pro</p>
+              <p className="mt-1 text-lg font-semibold">Linkforest PRO</p>
             </div>
             <div>
               <p className="text-muted-foreground text-sm">Price</p>
-              <p className="mt-1 text-lg font-semibold">$5 / month</p>
+              <p className="mt-1 text-lg font-semibold">$9 / month</p>
             </div>
           </div>
         </CardContent>

@@ -2,7 +2,7 @@ export const siteConfig = {
   name: 'Linkforest',
   tagline: 'Grow your links. Own your audience.',
   description:
-    'Real Analytics for $5/month. What Linktree Should Cost. Create beautiful link-in-bio pages with detailed analytics.',
+    'Start free and grow into PRO. Create beautiful link-in-bio pages with real analytics — upgrade for 1-year retention.',
   url: 'https://linkforest.com',
   ogImage: '/og-image.jpg',
   navigation: [
@@ -21,7 +21,7 @@ export const siteConfig = {
       icon: 'BarChart3',
       title: 'Real Analytics',
       description:
-        'Track every click with detailed analytics. Country, device, referrer data included at $5/month.',
+        'Track every click with detailed analytics. Start free, then upgrade to PRO for 1-year history.',
     },
     {
       icon: 'Palette',
@@ -37,9 +37,9 @@ export const siteConfig = {
     },
     {
       icon: 'DollarSign',
-      title: 'One Simple Price',
+      title: 'Simple Pricing',
       description:
-        '$5/month for everything. No hidden fees, no tiers, no surprises. Just honest pricing.',
+        'FREE ($0) for everything you need — upgrade to PRO ($9/mo) to keep 1-year analytics history.',
     },
     {
       icon: 'Zap',
@@ -99,17 +99,34 @@ export const siteConfig = {
     },
   ],
   pricing: {
-    pro: {
-      name: 'Pro',
-      price: '$5',
+    free: {
+      name: 'FREE',
+      price: '$0',
       period: 'per month',
-      description: 'Everything Linkforest offers, in one simple plan.',
+      description: 'Everything you need to start — for free.',
       features: [
         'Unlimited links',
-        'Full analytics (countries, devices, referrers)',
-        'Full customization (themes, colors, fonts, custom CSS)',
-        'No Linkforest branding',
-        'Duplicate & export profiles',
+        'Copy fields',
+        'Markdown pages',
+        'Full customization',
+        'Free subdomain (username.linkforest.com)',
+        'Free custom domain',
+        'QR codes',
+        '7-day analytics retention',
+        'Basic support',
+      ],
+    },
+    pro: {
+      name: 'PRO',
+      price: '$9',
+      period: 'per month',
+      description: "Don't lose your funnel performance data — keep a full year of analytics.",
+      features: [
+        'Everything in FREE',
+        '1-year analytics retention',
+        'Custom JavaScript injection',
+        'Built-in URL shortener',
+        'Priority support',
       ],
     },
   },

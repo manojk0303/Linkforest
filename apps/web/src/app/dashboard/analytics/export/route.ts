@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { SubscriptionTier } from '@prisma/client';
 import { getServerSession } from 'next-auth';
+
 import { authOptions } from '@/lib/auth';
+import {
+  getAnalyticsRetentionCutoffDate,
+  getAnalyticsRetentionDays,
+  getEffectiveStartDate,
+} from '@/lib/analytics-retention';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
@@ -19,16 +26,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Profile ID required' }, { status: 400 });
   }
 
-  const profile = await prisma.profile.findFirst({
-    where: { id: profileId, userId: session.user.id, deletedAt: null },
-  });
+  const [profile, user] = await Promise.all([
+    prisma.profile.findFirst({
+      where: { id: profileId, userId: session.user.id, deletedAt: null },
+    }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { subscriptionTier: true },
+    }),
+  ]);
 
   if (!profile) {
     return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
   }
 
-  const startDate =
+  const subscriptionTier = (user?.subscriptionTier ?? 'FREE') as SubscriptionTier;
+  const retentionDays = getAnalyticsRetentionDays(subscriptionTier);
+  const retentionCutoffDate = getAnalyticsRetentionCutoffDate(subscriptionTier);
+
+  const requestedStartDate =
     daysAgo === 0 ? new Date(0) : new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+  const startDate = getEffectiveStartDate({ requestedStartDate, retentionCutoffDate });
 
   const analytics = await prisma.analytics.findMany({
     where: {
@@ -67,7 +85,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(csv, {
     headers: {
       'Content-Type': 'text/csv',
-      'Content-Disposition': `attachment; filename="analytics-${profile.slug}-${new Date().toISOString().split('T')[0]}.csv"`,
+      'Content-Disposition': `attachment; filename="analytics-${profile.slug}-${new Date().toISOString().split('T')[0]}-last-${retentionDays}-days.csv"`,
     },
   });
 }

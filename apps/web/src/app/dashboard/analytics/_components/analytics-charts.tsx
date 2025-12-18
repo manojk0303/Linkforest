@@ -14,10 +14,11 @@ import {
 interface AnalyticsChartsProps {
   analytics: Array<{ clickedAt: Date }> | null | undefined;
   range: number;
+  retentionDays: number;
 }
 
-export function AnalyticsCharts({ analytics, range }: AnalyticsChartsProps) {
-  const days = range === 0 ? 30 : range;
+export function AnalyticsCharts({ analytics, range, retentionDays }: AnalyticsChartsProps) {
+  const days = range === 0 ? retentionDays : Math.min(range, retentionDays);
   const chartData = [];
 
   if (!analytics || analytics.length === 0) {
