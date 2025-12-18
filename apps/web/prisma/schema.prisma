@@ -50,6 +50,11 @@ enum LinkType {
   COPY_FIELD
 }
 
+enum SubscriptionTier {
+  FREE
+  PRO
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -58,10 +63,9 @@ model User {
   image         String?
   password      String?
 
-  role   UserRole   @default(USER)
-  status UserStatus @default(ACTIVE)
-
-  isPaid Boolean @default(false)
+  role            UserRole         @default(USER)
+  status          UserStatus       @default(ACTIVE)
+  subscriptionTier SubscriptionTier @default(FREE)
 
   deletedAt DateTime?
 
@@ -70,6 +74,7 @@ model User {
   profiles           Profile[]
   subscriptions      Subscription[]
   passwordResetTokens PasswordResetToken[]
+  shortLinks         ShortLink[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -86,6 +91,9 @@ model Profile {
   themeSettings Json          @default(dbgenerated("'{}'::jsonb")) @map("theme_settings")
   status        ProfileStatus @default(ACTIVE)
   deletedAt     DateTime?
+  
+  customHeadScript String? @db.Text
+  customBodyScript String? @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -93,6 +101,7 @@ model Profile {
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   links Link[]
   pages Page[]
+  shortLinks ShortLink[]
 
   @@index([userId])
 }
@@ -113,6 +122,27 @@ model Page {
 
   @@unique([profileId, slug])
   @@index([profileId, order])
+}
+
+model ShortLink {
+  id        String  @id @default(cuid())
+  userId    String
+  profileId String?
+  slug      String
+  targetUrl String  @db.Text
+  title     String?
+  isActive  Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  clicks  ShortLinkClick[]
+
+  @@unique([userId, slug])
+  @@index([userId])
+  @@index([slug])
 }
 
 model Link {
@@ -152,6 +182,22 @@ model Analytics {
   link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
 
   @@index([linkId, clickedAt])
+  @@index([country])
+  @@index([referrer])
+}
+
+model ShortLinkClick {
+  id           String   @id @default(cuid())
+  shortLinkId  String   @map("short_link_id")
+  clickedAt    DateTime @default(now()) @map("clicked_at")
+  country      String?  @db.VarChar(2)
+  referrer     String?
+  deviceType   DeviceType @default(UNKNOWN) @map("device_type")
+  userAgent    String?  @map("user_agent")
+
+  shortLink ShortLink @relation(fields: [shortLinkId], references: [id], onDelete: Cascade)
+
+  @@index([shortLinkId, clickedAt])
   @@index([country])
   @@index([referrer])
 }

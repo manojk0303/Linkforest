@@ -47,6 +47,9 @@ export default async function PublicProfilePage({ params }: { params: { slug: st
   const profile = await prisma.profile.findFirst({
     where: { slug: params.slug, deletedAt: null, status: 'ACTIVE' },
     include: {
+      user: {
+        select: { subscriptionTier: true },
+      },
       links: {
         where: { deletedAt: null, status: { in: ['ACTIVE', 'HIDDEN'] } },
         orderBy: { position: 'asc' },
@@ -63,31 +66,46 @@ export default async function PublicProfilePage({ params }: { params: { slug: st
   }
 
   const theme = normalizeThemeSettings(profile.themeSettings);
+  const canUseCustomScripts = profile.user.subscriptionTier === 'PRO';
 
   return (
-    <ProfilePreview
-      profile={{
-        slug: profile.slug,
-        displayName: profile.displayName,
-        bio: profile.bio,
-        image: profile.image,
-        themeSettings: theme,
-      }}
-      links={profile.links.map((l) => ({
-        id: l.id,
-        title: l.title,
-        url: l.url,
-        linkType: l.linkType,
-        status: l.status,
-        deletedAt: l.deletedAt,
-        metadata: l.metadata,
-      }))}
-      showQr
-      pages={profile.pages.map((p) => ({
-        id: p.id,
-        title: p.title,
-        slug: p.slug,
-      }))}
-    />
+    <>
+      <ProfilePreview
+        profile={{
+          slug: profile.slug,
+          displayName: profile.displayName,
+          bio: profile.bio,
+          image: profile.image,
+          themeSettings: theme,
+        }}
+        links={profile.links.map((l) => ({
+          id: l.id,
+          title: l.title,
+          url: l.url,
+          linkType: l.linkType,
+          status: l.status,
+          deletedAt: l.deletedAt,
+          metadata: l.metadata,
+        }))}
+        showQr
+        pages={profile.pages.map((p) => ({
+          id: p.id,
+          title: p.title,
+          slug: p.slug,
+        }))}
+      />
+
+      {/* Inject custom scripts for PRO users */}
+      {canUseCustomScripts && (
+        <>
+          {profile.customHeadScript && (
+            <div dangerouslySetInnerHTML={{ __html: profile.customHeadScript }} />
+          )}
+          {profile.customBodyScript && (
+            <div dangerouslySetInnerHTML={{ __html: profile.customBodyScript }} />
+          )}
+        </>
+      )}
+    </>
   );
 }

@@ -60,6 +60,8 @@ import {
 
 import { IconPicker } from './icon-picker';
 import { LinksDndList } from './links-dnd-list';
+import { CustomScriptsEditor } from './custom-scripts-editor';
+import { ShortLinkManager } from './short-link-manager';
 
 export type EditorProfile = {
   id: string;
@@ -69,6 +71,8 @@ export type EditorProfile = {
   image: string | null;
   status: 'ACTIVE' | 'DISABLED';
   themeSettings: ThemeSettings;
+  customHeadScript?: string | null;
+  customBodyScript?: string | null;
 };
 
 export type EditorLink = {
@@ -130,7 +134,7 @@ export function ProfileEditor({
   links,
   pages = [],
 }: {
-  user: { id: string; email: string; name: string | null };
+  user: { id: string; email: string; name: string | null; subscriptionTier: 'FREE' | 'PRO' };
   profiles: Array<{
     id: string;
     slug: string;
@@ -1047,6 +1051,22 @@ export function ProfileEditor({
                 </div>
               </CardContent>
             </Card>
+
+            {/* PRO Features Section */}
+            <div className="space-y-6">
+              {/* Custom Scripts Editor */}
+              <CustomScriptsEditor
+                profileId={profile.id}
+                user={user}
+                initialScripts={{
+                  customHeadScript: profileState.customHeadScript,
+                  customBodyScript: profileState.customBodyScript,
+                }}
+              />
+
+              {/* Short Link Manager */}
+              <ShortLinkManager user={user} initialShortLinks={[]} />
+            </div>
 
             <Card>
               <CardHeader>

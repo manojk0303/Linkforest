@@ -558,3 +558,174 @@ export async function exportProfileAction(
     filename: `linkforest-${profile.slug}-${date}.json`,
   };
 }
+
+export async function updateCustomScriptsAction(input: unknown) {
+  const user = await requireAuth();
+
+  const { updateCustomScriptsSchema } = await import('@/lib/validations/pro-features');
+  const result = updateCustomScriptsSchema.safeParse(input);
+  if (!result.success) {
+    return { ok: false as const, error: 'Validation failed', details: result.error.flatten() };
+  }
+
+  const { profileId, customHeadScript, customBodyScript } = result.data;
+
+  // Verify profile ownership and subscription
+  const profile = await prisma.profile.findFirst({
+    where: {
+      id: profileId,
+      user: { id: user.id, deletedAt: null },
+    },
+    select: {
+      id: true,
+      user: { select: { subscriptionTier: true } },
+      slug: true,
+    },
+  });
+
+  if (!profile) {
+    return { ok: false as const, error: 'Profile not found' };
+  }
+
+  if (profile.user.subscriptionTier !== 'PRO') {
+    return { ok: false as const, error: 'PRO subscription required' };
+  }
+
+  const updatedProfile = await prisma.profile.update({
+    where: { id: profileId },
+    data: {
+      customHeadScript: customHeadScript || null,
+      customBodyScript: customBodyScript || null,
+    },
+  });
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/${profile.slug}`);
+  return { ok: true as const, profile: updatedProfile };
+}
+
+export async function createShortLinkAction(input: unknown) {
+  const user = await requireAuth();
+
+  const { createShortLinkSchema } = await import('@/lib/validations/pro-features');
+  const result = createShortLinkSchema.safeParse(input);
+  if (!result.success) {
+    return { ok: false as const, error: 'Validation failed', details: result.error.flatten() };
+  }
+
+  const { slug, targetUrl, title, profileId } = result.data;
+
+  // Verify subscription
+  if (user.subscriptionTier !== 'PRO') {
+    return { ok: false as const, error: 'PRO subscription required' };
+  }
+
+  // Check if slug already exists for this user
+  const existing = await prisma.shortLink.findUnique({
+    where: { userId_slug: { userId: user.id, slug } },
+  });
+
+  if (existing) {
+    return { ok: false as const, error: 'Short link with this slug already exists' };
+  }
+
+  // Verify profile ownership if profileId is provided
+  if (profileId) {
+    const profile = await prisma.profile.findFirst({
+      where: { id: profileId, userId: user.id },
+      select: { id: true },
+    });
+
+    if (!profile) {
+      return { ok: false as const, error: 'Profile not found' };
+    }
+  }
+
+  const shortLink = await prisma.shortLink.create({
+    data: {
+      userId: user.id,
+      profileId: profileId || null,
+      slug,
+      targetUrl,
+      title,
+    },
+  });
+
+  revalidatePath('/dashboard');
+  return { ok: true as const, shortLink };
+}
+
+export async function updateShortLinkAction(shortLinkId: string, input: unknown) {
+  const user = await requireAuth();
+
+  const { updateShortLinkSchema } = await import('@/lib/validations/pro-features');
+  const result = updateShortLinkSchema.safeParse(input);
+  if (!result.success) {
+    return { ok: false as const, error: 'Validation failed', details: result.error.flatten() };
+  }
+
+  const { slug, targetUrl, title, isActive } = result.data;
+
+  // Verify ownership and subscription
+  const shortLink = await prisma.shortLink.findFirst({
+    where: {
+      id: shortLinkId,
+      userId: user.id,
+      user: { subscriptionTier: 'PRO' },
+    },
+    select: { id: true, slug: true },
+  });
+
+  if (!shortLink) {
+    return { ok: false as const, error: 'Short link not found or PRO subscription required' };
+  }
+
+  // Check slug uniqueness if being updated
+  if (slug && slug !== shortLink.slug) {
+    const existing = await prisma.shortLink.findUnique({
+      where: { userId_slug: { userId: user.id, slug } },
+    });
+
+    if (existing) {
+      return { ok: false as const, error: 'Short link with this slug already exists' };
+    }
+  }
+
+  const updatedShortLink = await prisma.shortLink.update({
+    where: { id: shortLinkId },
+    data: {
+      ...(slug && slug !== shortLink.slug ? { slug } : {}),
+      ...(targetUrl !== undefined && { targetUrl }),
+      ...(title !== undefined && { title }),
+      ...(isActive !== undefined && { isActive }),
+    },
+  });
+
+  revalidatePath('/dashboard');
+  return { ok: true as const, shortLink: updatedShortLink };
+}
+
+export async function deleteShortLinkAction(shortLinkId: string) {
+  const user = await requireAuth();
+
+  // Verify ownership and subscription
+  const shortLink = await prisma.shortLink.findFirst({
+    where: {
+      id: shortLinkId,
+      userId: user.id,
+      user: { subscriptionTier: 'PRO' },
+    },
+    select: { id: true },
+  });
+
+  if (!shortLink) {
+    return { ok: false as const, error: 'Short link not found or PRO subscription required' };
+  }
+
+  await prisma.shortLink.delete({
+    where: { id: shortLinkId },
+  });
+
+  revalidatePath('/dashboard');
+  return { ok: true as const };
+}

@@ -3,7 +3,7 @@ import { getFeatureFlags } from './feature-flags';
 
 export async function getUserSubscription(userId: string) {
   const [user, subscription] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { isPaid: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { subscriptionTier: true } }),
     prisma.subscription.findFirst({
       where: { userId },
       select: {
@@ -17,7 +17,7 @@ export async function getUserSubscription(userId: string) {
   ]);
 
   return {
-    isPaid: user?.isPaid ?? false,
+    isPaid: user?.subscriptionTier === 'PRO',
     status: subscription?.status ?? null,
     currentPeriodStart: subscription?.currentPeriodStart ?? null,
     currentPeriodEnd: subscription?.currentPeriodEnd ?? null,

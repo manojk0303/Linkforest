@@ -262,7 +262,12 @@ export default async function DashboardPage({
 
         <div data-tour="profile-editor">
           <ProfileEditor
-            user={{ id: user.id, email: user.email, name: user.name }}
+            user={{
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              subscriptionTier: user.subscriptionTier,
+            }}
             profiles={profiles}
             profile={{
               id: profile.id,
@@ -272,6 +277,8 @@ export default async function DashboardPage({
               image: profile.image,
               status: profile.status,
               themeSettings: normalizeThemeSettings(profile.themeSettings),
+              customHeadScript: profile.customHeadScript,
+              customBodyScript: profile.customBodyScript,
             }}
             links={profile.links.map((l) => ({
               id: l.id,
@@ -279,6 +286,7 @@ export default async function DashboardPage({
               slug: l.slug,
               title: l.title,
               url: l.url,
+              linkType: l.linkType,
               position: l.position,
               metadata: l.metadata,
               status: l.status,

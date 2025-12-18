@@ -19,7 +19,7 @@ export default async function AdminAnalyticsPage() {
   ] = await Promise.all([
     prisma.user.count({ where: { deletedAt: null } }),
     prisma.user.count({ where: { status: 'ACTIVE', deletedAt: null } }),
-    prisma.user.count({ where: { isPaid: true, deletedAt: null } }),
+    prisma.user.count({ where: { subscriptionTier: 'PRO', deletedAt: null } }),
     prisma.profile.count({ where: { deletedAt: null } }),
     prisma.link.count({ where: { deletedAt: null } }),
     prisma.analytics.count(),

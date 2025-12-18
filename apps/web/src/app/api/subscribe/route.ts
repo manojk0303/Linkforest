@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
             }),
             prisma.user.update({
               where: { id: user.id },
-              data: { isPaid },
+              data: { subscriptionTier: 'PRO' },
             }),
           ]);
         }
@@ -118,7 +118,10 @@ export async function POST(request: NextRequest) {
         });
 
         if (existing?.userId) {
-          await prisma.user.update({ where: { id: existing.userId }, data: { isPaid: false } });
+          await prisma.user.update({
+            where: { id: existing.userId },
+            data: { subscriptionTier: 'FREE' },
+          });
         }
       }
 
@@ -185,7 +188,10 @@ export async function GET(request: NextRequest) {
     }
 
     const [user, subscription] = await Promise.all([
-      prisma.user.findUnique({ where: { id: session.user.id }, select: { isPaid: true } }),
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { subscriptionTier: true },
+      }),
       prisma.subscription.findFirst({
         where: { userId: session.user.id },
         select: {
@@ -198,7 +204,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     return NextResponse.json({
-      isPaid: user?.isPaid ?? false,
+      isPaid: user?.subscriptionTier === 'PRO',
       status: subscription?.status ?? null,
       currentPeriodStart: subscription?.currentPeriodStart ?? null,
       currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
