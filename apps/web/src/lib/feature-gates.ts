@@ -1,11 +1,6 @@
 import type { User } from '@prisma/client';
 
-const PRO_FEATURES = [
-  'custom_domain',
-  'custom_scripts',
-  'url_shortener',
-  'full_analytics_retention',
-] as const;
+const PRO_FEATURES = ['custom_scripts', 'url_shortener', 'full_analytics_retention'] as const;
 
 type ProFeature = (typeof PRO_FEATURES)[number];
 
