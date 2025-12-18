@@ -18,7 +18,7 @@ interface AnalyticsChartsProps {
 }
 
 export function AnalyticsCharts({ analytics, range, retentionDays }: AnalyticsChartsProps) {
-  const days = range === 0 ? Math.min(30, retentionDays) : Math.min(range, retentionDays);
+  const days = range === 0 ? retentionDays : Math.min(range, retentionDays);
   const chartData = [];
 
   if (!analytics || analytics.length === 0) {

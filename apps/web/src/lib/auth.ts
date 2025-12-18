@@ -128,14 +128,17 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token && session.user) {
+        const subscriptionTier = (token as any).subscriptionTier ?? 'FREE';
+        const subscriptionStatus = (token as any).subscriptionStatus ?? 'ACTIVE';
+
         session.user.id = token.id as string;
         session.user.email = token.email as string;
         session.user.name = token.name as string;
         session.user.image = token.image as string;
         session.user.role = token.role as string;
         session.user.status = token.status as string;
-        session.user.subscriptionTier = token.subscriptionTier as string;
-        session.user.subscriptionStatus = token.subscriptionStatus as string;
+        session.user.subscriptionTier = subscriptionTier;
+        session.user.subscriptionStatus = subscriptionStatus;
       }
 
       return session;
