@@ -38,11 +38,14 @@
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.68.0",
     "react-joyride": "^2.9.3",
-    "recharts": "^3.5.1"
+    "react-markdown": "^10.1.0",
+    "recharts": "^3.5.1",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",
-    "@tailwindcss/typography": "^0.5.16",
+    "@tailwindcss/typography": "^0.5.19",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@types/bcryptjs": "^3.0.0",

@@ -156,6 +156,7 @@ export async function createLinkAction(input: unknown) {
           slug: candidate,
           title: result.data.title,
           url: result.data.url,
+          linkType: result.data.linkType ?? 'URL',
           status: result.data.status ?? 'ACTIVE',
           position: (maxPosition._max.position ?? -1) + 1,
           metadata: (result.data.metadata ?? {}) as any,
@@ -194,6 +195,7 @@ export async function updateLinkAction(linkId: string, input: unknown) {
     data: {
       title: result.data.title,
       url: result.data.url,
+      linkType: result.data.linkType,
       status: result.data.status,
       position: result.data.position,
       metadata: result.data.metadata as any,
@@ -343,6 +345,148 @@ function escapeCsv(value: string) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
+}
+
+export async function createPageAction(input: unknown) {
+  const user = await requireAuth();
+
+  const { createPageSchema } = await import('@/lib/validations/pages');
+  const result = createPageSchema.safeParse(input);
+  if (!result.success) {
+    return { ok: false as const, error: 'Validation failed', details: result.error.flatten() };
+  }
+
+  const { profileId, title, slug, content, isPublished, order } = result.data;
+
+  // Verify profile ownership
+  const profile = await prisma.profile.findFirst({
+    where: { id: profileId, userId: user.id, deletedAt: null },
+    select: { id: true },
+  });
+
+  if (!profile) {
+    return { ok: false as const, error: 'Profile not found' };
+  }
+
+  // Check if slug already exists for this profile
+  const existing = await prisma.page.findUnique({
+    where: { profileId_slug: { profileId, slug } },
+  });
+
+  if (existing) {
+    return { ok: false as const, error: 'Page with this slug already exists' };
+  }
+
+  // Calculate position if not provided
+  let position = order;
+  if (position === undefined) {
+    const maxOrder = await prisma.page.aggregate({
+      where: { profileId },
+      _max: { order: true },
+    });
+    position = (maxOrder._max.order ?? -1) + 1;
+  }
+
+  const page = await prisma.page.create({
+    data: {
+      profileId,
+      title,
+      slug,
+      content,
+      isPublished: isPublished ?? true,
+      order: position,
+    },
+  });
+
+  revalidatePath('/dashboard');
+  return { ok: true as const, page };
+}
+
+export async function updatePageAction(pageId: string, input: unknown) {
+  const user = await requireAuth();
+
+  const { updatePageSchema } = await import('@/lib/validations/pages');
+  const result = updatePageSchema.safeParse(input);
+  if (!result.success) {
+    return { ok: false as const, error: 'Validation failed', details: result.error.flatten() };
+  }
+
+  const { title, slug, content, isPublished, order } = result.data;
+
+  // Verify profile ownership and page existence
+  const page = await prisma.page.findFirst({
+    where: {
+      id: pageId,
+      profile: { userId: user.id, deletedAt: null },
+    },
+    select: {
+      id: true,
+      profile: { select: { slug: true } },
+    },
+  });
+
+  if (!page) {
+    return { ok: false as const, error: 'Page not found' };
+  }
+
+  // Check slug uniqueness if being updated
+  if (slug) {
+    const existing = await prisma.page.findUnique({
+      where: {
+        profileId_slug: {
+          profileId: page.profile.id,
+          slug,
+        },
+      },
+    });
+
+    if (existing && existing.id !== pageId) {
+      return { ok: false as const, error: 'Page with this slug already exists' };
+    }
+  }
+
+  const updatedPage = await prisma.page.update({
+    where: { id: pageId },
+    data: {
+      ...(title !== undefined && { title }),
+      ...(slug !== undefined && { slug }),
+      ...(content !== undefined && { content }),
+      ...(isPublished !== undefined && { isPublished }),
+      ...(order !== undefined && { order }),
+    },
+  });
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/${page.profile.slug}`);
+  return { ok: true as const, page: updatedPage };
+}
+
+export async function deletePageAction(pageId: string) {
+  const user = await requireAuth();
+
+  // Verify profile ownership and page existence
+  const page = await prisma.page.findFirst({
+    where: {
+      id: pageId,
+      profile: { userId: user.id, deletedAt: null },
+    },
+    select: {
+      id: true,
+      profile: { select: { slug: true } },
+    },
+  });
+
+  if (!page) {
+    return { ok: false as const, error: 'Page not found' };
+  }
+
+  await prisma.page.delete({
+    where: { id: pageId },
+  });
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/${page.profile.slug}`);
+  return { ok: true as const };
 }
 
 export async function exportProfileAction(

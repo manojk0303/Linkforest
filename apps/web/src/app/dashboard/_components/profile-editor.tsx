@@ -28,8 +28,13 @@ import {
   SelectValue,
   Spinner,
   Switch,
-  cn,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Textarea,
   toast,
+  cn,
 } from '@acme/ui';
 
 import {
@@ -37,6 +42,7 @@ import {
   type PreviewLink,
   type PreviewProfile,
 } from '@/components/profile-preview';
+import { PagesManager } from './pages-manager';
 import { slugify } from '@/lib/slugs';
 import type { ThemeSettings } from '@/lib/theme-settings';
 
@@ -71,9 +77,19 @@ export type EditorLink = {
   slug: string;
   title: string;
   url: string;
+  linkType: 'URL' | 'COPY_FIELD';
   position: number;
   status: 'ACTIVE' | 'HIDDEN' | 'ARCHIVED';
   metadata: Prisma.JsonValue;
+};
+
+export type EditorPage = {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  isPublished: boolean;
+  order: number;
 };
 
 function isValidHttpUrl(value: string) {
@@ -83,6 +99,10 @@ function isValidHttpUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+function isValidCopyFieldValue(value: string) {
+  return value.trim().length > 0;
 }
 
 function downloadTextFile(content: string, mimeType: string, filename: string) {
@@ -103,32 +123,12 @@ function getLinkMetadata(link: Pick<EditorLink, 'metadata'>): Record<string, any
   return link.metadata as Record<string, any>;
 }
 
-function toLocalDatetimeValue(iso: string | undefined): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  const mm = pad(d.getMonth() + 1);
-  const dd = pad(d.getDate());
-  const hh = pad(d.getHours());
-  const min = pad(d.getMinutes());
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-}
-
-function toISOStringOrUndefined(value: string): string | undefined {
-  if (!value) return undefined;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return undefined;
-  return d.toISOString();
-}
-
 export function ProfileEditor({
   user,
   profiles,
   profile,
   links,
+  pages = [],
 }: {
   user: { id: string; email: string; name: string | null };
   profiles: Array<{
@@ -140,54 +140,55 @@ export function ProfileEditor({
   }>;
   profile: EditorProfile;
   links: EditorLink[];
+  pages?: EditorPage[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [profileState, setProfileState] = useState(profile);
   const [linksState, setLinksState] = useState<EditorLink[]>(links);
+  const [pagesState, setPagesState] = useState<EditorPage[]>(pages);
 
   const [switchingProfile, setSwitchingProfile] = useState(false);
 
+  // Link creation state
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newLinkUrlTouched, setNewLinkUrlTouched] = useState(false);
+  const [newLinkType, setNewLinkType] = useState<'URL' | 'COPY_FIELD'>('URL');
   const [addingLink, setAddingLink] = useState(false);
 
   const titleInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Dialog states
   const [actionsOpen, setActionsOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
+  // Profile creation state
   const [createName, setCreateName] = useState('');
   const [createSlug, setCreateSlug] = useState('');
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [createSlugStatus, setCreateSlugStatus] = useState<{
-    loading: boolean;
-    available: boolean | null;
-    message: string | null;
-  }>({ loading: false, available: null, message: null });
 
+  // Profile duplication state
   const [duplicateName, setDuplicateName] = useState('');
   const [duplicateSlug, setDuplicateSlug] = useState('');
   const [duplicateSubmitting, setDuplicateSubmitting] = useState(false);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
-  const [duplicateSlugStatus, setDuplicateSlugStatus] = useState<{
-    loading: boolean;
-    available: boolean | null;
-    message: string | null;
-  }>({ loading: false, available: null, message: null });
 
+  // Export state
   const [exporting, setExporting] = useState(false);
 
   const isPublished = profileState.status === 'ACTIVE';
   const profilesUsedText = `${profiles.length}/5 profiles used`;
   const atProfileLimit = profiles.length >= 5;
 
-  const newUrlValid = isValidHttpUrl(newLinkUrl.trim());
+  const newUrlValid =
+    newLinkType === 'URL'
+      ? isValidHttpUrl(newLinkUrl.trim())
+      : isValidCopyFieldValue(newLinkUrl.trim());
 
   const previewProfile: PreviewProfile = useMemo(
     () => ({
@@ -206,6 +207,7 @@ export function ProfileEditor({
         id: l.id,
         title: l.title,
         url: l.url,
+        linkType: l.linkType,
         status: l.status,
         metadata: l.metadata,
       })),
@@ -247,11 +249,22 @@ export function ProfileEditor({
 
     if (!title) return;
 
-    if (!url || !isValidHttpUrl(url)) {
+    // Validate based on link type
+    if (newLinkType === 'URL' && !isValidHttpUrl(url)) {
       setNewLinkUrlTouched(true);
       toast({
         title: 'Invalid URL',
         description: 'Please enter a valid URL (e.g., https://instagram.com/yourname)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (newLinkType === 'COPY_FIELD' && !isValidCopyFieldValue(url)) {
+      setNewLinkUrlTouched(true);
+      toast({
+        title: 'Invalid text',
+        description: 'Please enter text to copy',
         variant: 'destructive',
       });
       return;
@@ -266,6 +279,7 @@ export function ProfileEditor({
       slug: 'temp',
       title,
       url,
+      linkType: newLinkType,
       position: linksState.length,
       status: 'ACTIVE',
       metadata: {},
@@ -275,11 +289,13 @@ export function ProfileEditor({
     setNewLinkTitle('');
     setNewLinkUrl('');
     setNewLinkUrlTouched(false);
+    setNewLinkType('URL');
 
     const result = await createLinkAction({
       profileId: profile.id,
       title,
       url,
+      linkType: newLinkType,
       status: 'ACTIVE',
       metadata: {},
     });
@@ -298,13 +314,25 @@ export function ProfileEditor({
   }
 
   function handleUpdateLink(linkId: string, patch: Partial<EditorLink>) {
-    if (typeof patch.url === 'string' && patch.url && !isValidHttpUrl(patch.url.trim())) {
-      toast({
-        title: 'Invalid URL',
-        description: 'Please enter a valid URL (e.g., https://instagram.com/yourname)',
-        variant: 'destructive',
-      });
-      return;
+    // Validate based on link type
+    if (typeof patch.url === 'string' && patch.url) {
+      const linkType = patch.linkType || linksState.find((l) => l.id === linkId)?.linkType || 'URL';
+      if (linkType === 'URL' && !isValidHttpUrl(patch.url.trim())) {
+        toast({
+          title: 'Invalid URL',
+          description: 'Please enter a valid URL (e.g., https://instagram.com/yourname)',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (linkType === 'COPY_FIELD' && !isValidCopyFieldValue(patch.url.trim())) {
+        toast({
+          title: 'Invalid text',
+          description: 'Please enter text to copy',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     setLinksState((prev) => prev.map((l) => (l.id === linkId ? { ...l, ...patch } : l)));
@@ -313,6 +341,7 @@ export function ProfileEditor({
       const result = await updateLinkAction(linkId, {
         title: patch.title,
         url: patch.url,
+        linkType: patch.linkType,
         status: patch.status,
         metadata: patch.metadata,
       });
@@ -392,64 +421,6 @@ export function ProfileEditor({
     }
   }
 
-  useEffect(() => {
-    if (!createOpen) return;
-    const fallbackName = user.name || user.email || 'My Profile';
-    setCreateName('');
-    setCreateSlug(slugify(fallbackName));
-    setCreateError(null);
-    setCreateSlugStatus({ loading: false, available: null, message: null });
-  }, [createOpen, user.email, user.name]);
-
-  useEffect(() => {
-    if (!duplicateOpen) return;
-    const baseName = profileState.displayName || profileState.slug;
-    setDuplicateName(`${baseName} Copy`);
-    setDuplicateSlug(`${profileState.slug}-copy`);
-    setDuplicateError(null);
-    setDuplicateSlugStatus({ loading: false, available: null, message: null });
-  }, [duplicateOpen, profileState.displayName, profileState.slug]);
-
-  useEffect(() => {
-    if (!createOpen) return;
-    const candidate = createSlug.trim();
-
-    if (candidate.length < 2) {
-      setCreateSlugStatus({ loading: false, available: null, message: null });
-      return;
-    }
-
-    setCreateSlugStatus((prev) => ({ ...prev, loading: true }));
-    const handle = setTimeout(async () => {
-      const res = await checkProfileSlugAvailabilityAction(candidate);
-      if (res.ok) {
-        setCreateSlugStatus({ loading: false, available: res.available, message: res.message });
-      }
-    }, 350);
-
-    return () => clearTimeout(handle);
-  }, [createSlug, createOpen]);
-
-  useEffect(() => {
-    if (!duplicateOpen) return;
-    const candidate = duplicateSlug.trim();
-
-    if (candidate.length < 2) {
-      setDuplicateSlugStatus({ loading: false, available: null, message: null });
-      return;
-    }
-
-    setDuplicateSlugStatus((prev) => ({ ...prev, loading: true }));
-    const handle = setTimeout(async () => {
-      const res = await checkProfileSlugAvailabilityAction(candidate);
-      if (res.ok) {
-        setDuplicateSlugStatus({ loading: false, available: res.available, message: res.message });
-      }
-    }, 350);
-
-    return () => clearTimeout(handle);
-  }, [duplicateSlug, duplicateOpen]);
-
   async function submitCreateProfile() {
     setCreateSubmitting(true);
     setCreateError(null);
@@ -498,16 +469,31 @@ export function ProfileEditor({
 
       toast({
         title: 'Profile duplicated',
-        description: `Profile duplicated! You're now editing ${result.profile.displayName || result.profile.slug}.`,
+        description: `Created a copy called ${result.profile.displayName || result.profile.slug}.`,
       });
 
       setDuplicateOpen(false);
-      setActionsOpen(false);
       window.location.href = `/dashboard?profile=${result.profile.id}`;
     } finally {
       setDuplicateSubmitting(false);
     }
   }
+
+  useEffect(() => {
+    if (!createOpen) return;
+    const fallbackName = user.name || user.email || 'My Profile';
+    setCreateName('');
+    setCreateSlug(slugify(fallbackName));
+    setCreateError(null);
+  }, [createOpen, user.email, user.name]);
+
+  useEffect(() => {
+    if (!duplicateOpen) return;
+    const baseName = profileState.displayName || profileState.slug;
+    setDuplicateName(`${baseName} Copy`);
+    setDuplicateSlug(`${profileState.slug}-copy`);
+    setDuplicateError(null);
+  }, [duplicateOpen, profileState.displayName, profileState.slug]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -557,50 +543,35 @@ export function ProfileEditor({
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="create-slug">Username / slug</Label>
+              <Label htmlFor="create-slug">Username</Label>
               <Input
                 id="create-slug"
                 value={createSlug}
                 onChange={(e) => setCreateSlug(slugify(e.target.value))}
-                placeholder="my-username"
+                placeholder="my-profile"
                 disabled={createSubmitting}
               />
-              <div className="text-xs">
-                {createSlugStatus.loading ? (
-                  <span className="text-muted-foreground">Checking…</span>
-                ) : createSlugStatus.available === true ? (
-                  <span className="text-green-600 dark:text-green-400">
-                    ✓ {createSlugStatus.message}
-                  </span>
-                ) : createSlugStatus.available === false ? (
-                  <span className="text-destructive">✗ {createSlugStatus.message}</span>
-                ) : (
-                  <span className="text-muted-foreground">
-                    Username can only contain letters, numbers, and hyphens
-                  </span>
-                )}
-              </div>
+              <p className="text-muted-foreground text-xs">Public URL: /{createSlug}</p>
             </div>
-
-            <div className="text-muted-foreground text-xs">{profilesUsedText}</div>
-
-            {atProfileLimit && (
-              <p className="text-destructive text-sm">Maximum 5 profiles reached</p>
-            )}
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCreateOpen(false)}
+              disabled={createSubmitting}
+            >
               Cancel
             </Button>
             <Button
               type="button"
               onClick={() => void submitCreateProfile()}
-              disabled={createSubmitting || atProfileLimit || createSlugStatus.available === false}
+              disabled={!createName.trim() || !createSlug.trim() || createSubmitting}
             >
               {createSubmitting ? (
                 <span className="flex items-center gap-2">
-                  <Spinner className="text-current" /> Creating profile…
+                  <Spinner className="text-current" /> Creating…
                 </span>
               ) : (
                 'Create profile'
@@ -629,44 +600,37 @@ export function ProfileEditor({
                 id="dup-name"
                 value={duplicateName}
                 onChange={(e) => setDuplicateName(e.target.value)}
+                placeholder="My profile copy"
                 disabled={duplicateSubmitting}
               />
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="dup-slug">New username / slug</Label>
+              <Label htmlFor="dup-slug">New username</Label>
               <Input
                 id="dup-slug"
                 value={duplicateSlug}
                 onChange={(e) => setDuplicateSlug(slugify(e.target.value))}
+                placeholder="my-profile-copy"
                 disabled={duplicateSubmitting}
               />
-              <div className="text-xs">
-                {duplicateSlugStatus.loading ? (
-                  <span className="text-muted-foreground">Checking…</span>
-                ) : duplicateSlugStatus.available === true ? (
-                  <span className="text-green-600 dark:text-green-400">
-                    ✓ {duplicateSlugStatus.message}
-                  </span>
-                ) : duplicateSlugStatus.available === false ? (
-                  <span className="text-destructive">✗ {duplicateSlugStatus.message}</span>
-                ) : null}
-              </div>
+              <p className="text-muted-foreground text-xs">Public URL: /{duplicateSlug}</p>
             </div>
-
-            <div className="text-muted-foreground text-xs">{profilesUsedText}</div>
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDuplicateOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDuplicateOpen(false)}
+              disabled={duplicateSubmitting}
+            >
               Cancel
             </Button>
             <Button
               type="button"
               onClick={() => void submitDuplicateProfile()}
-              disabled={
-                duplicateSubmitting || atProfileLimit || duplicateSlugStatus.available === false
-              }
+              disabled={!duplicateName.trim() || !duplicateSlug.trim() || duplicateSubmitting}
             >
               {duplicateSubmitting ? (
                 <span className="flex items-center gap-2">
@@ -728,444 +692,391 @@ export function ProfileEditor({
       </Dialog>
 
       <div className="space-y-6">
-        <Card>
-          <CardHeader className="space-y-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <CardTitle>Dashboard</CardTitle>
-                <CardDescription>
-                  Select a profile, manage links, and publish when ready.
-                </CardDescription>
-              </div>
+        {/* Tabs interface */}
+        <Tabs defaultValue="links" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="links">🔗 Links</TabsTrigger>
+            <TabsTrigger value="pages">📄 Pages</TabsTrigger>
+            <TabsTrigger value="settings">⚙️ Settings</TabsTrigger>
+          </TabsList>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setActionsOpen(true)}
-                  disabled={switchingProfile}
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="ml-2">Actions</span>
-                </Button>
-              </div>
-            </div>
+          {/* Links Tab */}
+          <TabsContent value="links" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>📝 Manage Links & Copy Fields</CardTitle>
+                <CardDescription>Add regular links, copy fields, edit, and reorder</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                  <div className="space-y-1">
+                    <Label htmlFor="newTitle">Title</Label>
+                    <Input
+                      ref={titleInputRef}
+                      id="newTitle"
+                      value={newLinkTitle}
+                      onChange={(e) => setNewLinkTitle(e.target.value)}
+                      placeholder={newLinkType === 'COPY_FIELD' ? 'Bitcoin Wallet' : 'Instagram'}
+                    />
+                  </div>
 
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-              <div className="space-y-1">
-                <Label>Current profile</Label>
-                <Select
-                  value={profile.id}
-                  onValueChange={handleSwitchProfile}
-                  disabled={switchingProfile}
-                >
-                  <SelectTrigger className="h-12">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {profiles.map((p) => {
-                      const label = p.displayName || p.slug;
-                      const initial = (label || 'P').slice(0, 1).toUpperCase();
-                      return (
-                        <SelectItem key={p.id} value={p.id}>
-                          <span className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                'inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs',
-                                p.id === profile.id && 'border-primary',
-                              )}
-                            >
-                              {initial}
-                            </span>
-                            <span>
-                              {label} {p.status === 'DISABLED' ? '(Draft)' : ''}
-                            </span>
-                          </span>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                <div className="text-muted-foreground text-xs">{profilesUsedText}</div>
-              </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="newUrl">
+                      {newLinkType === 'COPY_FIELD' ? 'Text to Copy' : 'URL'}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="newUrl"
+                        value={newLinkUrl}
+                        onChange={(e) => setNewLinkUrl(e.target.value)}
+                        onBlur={() => setNewLinkUrlTouched(true)}
+                        placeholder={
+                          newLinkType === 'COPY_FIELD'
+                            ? 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
+                            : 'https://instagram.com/yourname'
+                        }
+                        className={cn(newLinkUrlTouched && !newUrlValid && 'border-destructive')}
+                      />
+                      {newLinkUrl.trim() && newUrlValid ? (
+                        <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-600 dark:text-green-400" />
+                      ) : null}
+                    </div>
+                    {newLinkUrlTouched && newLinkUrl.trim() && !newUrlValid ? (
+                      <p className="text-destructive text-xs">
+                        {newLinkType === 'COPY_FIELD'
+                          ? 'Please enter text to copy'
+                          : 'Please enter a valid URL (e.g., https://instagram.com/yourname)'}
+                      </p>
+                    ) : null}
+                  </div>
 
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant={isPublished ? 'default' : 'secondary'}
-                  className={cn(
-                    'justify-center',
-                    isPublished
-                      ? 'bg-green-600 text-white dark:bg-green-500'
-                      : 'bg-muted text-muted-foreground',
-                  )}
-                >
-                  {isPublished ? '🟢 Published' : '⚪ Draft'}
-                </Badge>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="displayName">Profile name</Label>
-                <Input
-                  id="displayName"
-                  value={profileState.displayName ?? ''}
-                  onChange={(e) => updateProfileDraft({ displayName: e.target.value })}
-                  onBlur={() => saveProfile({ displayName: profileState.displayName })}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="slug">Username / slug</Label>
-                <Input
-                  id="slug"
-                  value={profileState.slug}
-                  onChange={(e) => updateProfileDraft({ slug: slugify(e.target.value) })}
-                  onBlur={() => saveProfile({ slug: profileState.slug })}
-                />
-                <div className="text-muted-foreground text-xs">
-                  Public URL: /{profileState.slug}
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={newLinkType === 'URL' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setNewLinkType('URL')}
+                      className="whitespace-nowrap"
+                    >
+                      🔗 Link
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={newLinkType === 'COPY_FIELD' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        setNewLinkType('COPY_FIELD');
+                        setNewLinkUrl('');
+                        setNewLinkUrlTouched(false);
+                      }}
+                      className="whitespace-nowrap"
+                    >
+                      📋 Copy
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="bio">Bio</Label>
-              <textarea
-                id="bio"
-                className="border-input bg-background min-h-[96px] w-full rounded-md border px-3 py-2 text-sm"
-                value={profileState.bio ?? ''}
-                onChange={(e) => updateProfileDraft({ bio: e.target.value })}
-                onBlur={() => saveProfile({ bio: profileState.bio })}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="avatarUrl">Avatar Image URL</Label>
-              <Input
-                id="avatarUrl"
-                value={profileState.image ?? ''}
-                onChange={(e) => updateProfileDraft({ image: e.target.value })}
-                onBlur={() =>
-                  saveProfile({
-                    image: profileState.image?.trim() ? profileState.image.trim() : null,
-                  })
-                }
-                placeholder="Paste image URL (ImgBB, Imgur, etc.)"
-              />
-            </div>
-
-            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-              <div>
-                <div className="font-medium">Published</div>
-                <div className="text-muted-foreground text-xs">
-                  Turn off to hide your profile temporarily.
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    onClick={() => void handleCreateLink()}
+                    disabled={
+                      !newLinkTitle.trim() || !newLinkUrl.trim() || !newUrlValid || addingLink
+                    }
+                  >
+                    {addingLink ? (
+                      <span className="flex items-center gap-2">
+                        <Spinner className="text-current" /> Adding…
+                      </span>
+                    ) : newLinkType === 'COPY_FIELD' ? (
+                      'Add Copy Field'
+                    ) : (
+                      'Add Link'
+                    )}
+                  </Button>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span
-                  className={cn(
-                    'text-xs font-medium',
-                    isPublished ? 'text-green-600' : 'text-muted-foreground',
-                  )}
-                >
-                  {isPublished ? 'Published' : 'Draft'}
-                </span>
-                <Switch
-                  checked={isPublished}
-                  onCheckedChange={(checked) => {
-                    toast({
-                      title: checked ? 'Profile published' : 'Profile set to draft',
-                      description: checked
-                        ? 'Your profile is now live.'
-                        : 'Your profile is hidden (visitors will see a 404).',
-                    });
-                    saveProfile({ status: checked ? 'ACTIVE' : 'DISABLED' });
-                  }}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card id="links">
-          <CardHeader>
-            <CardTitle>📝 Manage Links</CardTitle>
-            <CardDescription>Add, edit, reorder your links</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-              <div className="space-y-1">
-                <Label htmlFor="newTitle">Title</Label>
-                <Input
-                  ref={titleInputRef}
-                  id="newTitle"
-                  value={newLinkTitle}
-                  onChange={(e) => setNewLinkTitle(e.target.value)}
-                  placeholder="Instagram"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="newUrl">URL</Label>
-                <div className="relative">
-                  <Input
-                    id="newUrl"
-                    value={newLinkUrl}
-                    onChange={(e) => setNewLinkUrl(e.target.value)}
-                    onBlur={() => setNewLinkUrlTouched(true)}
-                    placeholder="https://instagram.com/yourname"
-                    className={cn(newLinkUrlTouched && !newUrlValid && 'border-destructive')}
-                  />
-                  {newLinkUrl.trim() && newUrlValid ? (
-                    <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-600 dark:text-green-400" />
-                  ) : null}
-                </div>
-                {newLinkUrlTouched && newLinkUrl.trim() && !newUrlValid ? (
-                  <p className="text-destructive text-xs">
-                    Please enter a valid URL (e.g., https://instagram.com/yourname)
-                  </p>
-                ) : null}
-              </div>
-
-              <Button
-                type="button"
-                onClick={() => void handleCreateLink()}
-                disabled={!newLinkTitle.trim() || !newLinkUrl.trim() || !newUrlValid || addingLink}
-              >
-                {addingLink ? (
-                  <span className="flex items-center gap-2">
-                    <Spinner className="text-current" /> Adding…
-                  </span>
+                {linksState.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+                    <div className="bg-primary/10 mb-4 rounded-full p-3">
+                      <LinkIcon className="text-primary h-8 w-8" />
+                    </div>
+                    <h3 className="text-lg font-semibold">No links yet</h3>
+                    <p className="text-muted-foreground mt-2 max-w-xs text-sm">
+                      Start building your Linkforest by adding your first link
+                    </p>
+                    <Button
+                      type="button"
+                      size="lg"
+                      className="mt-6"
+                      onClick={() => titleInputRef.current?.focus()}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Your First Link
+                    </Button>
+                  </div>
                 ) : (
-                  'Add link'
+                  <LinksDndList
+                    links={linksState}
+                    onLinksChange={setLinksState}
+                    onReorder={(orderedIds) => handleReorder(orderedIds)}
+                    renderLink={(link, { dragHandle, isDragging }) => {
+                      const md = getLinkMetadata(link);
+
+                      return (
+                        <div
+                          className={cn(
+                            'border-border bg-card rounded-lg border p-3',
+                            isDragging && 'ring-ring ring-2',
+                          )}
+                        >
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                            <div className="pt-1">{dragHandle}</div>
+
+                            <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                              <div className="space-y-1">
+                                <Label htmlFor={`title-${link.id}`}>Title</Label>
+                                <Input
+                                  id={`title-${link.id}`}
+                                  value={link.title}
+                                  onChange={(e) =>
+                                    setLinksState((prev) =>
+                                      prev.map((l) =>
+                                        l.id === link.id ? { ...l, title: e.target.value } : l,
+                                      ),
+                                    )
+                                  }
+                                  onBlur={() => handleUpdateLink(link.id, { title: link.title })}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor={`url-${link.id}`}>
+                                  {link.linkType === 'COPY_FIELD' ? 'Text to Copy' : 'URL'}
+                                </Label>
+                                <Input
+                                  id={`url-${link.id}`}
+                                  value={link.url}
+                                  onChange={(e) =>
+                                    setLinksState((prev) =>
+                                      prev.map((l) =>
+                                        l.id === link.id ? { ...l, url: e.target.value } : l,
+                                      ),
+                                    )
+                                  }
+                                  onBlur={() => handleUpdateLink(link.id, { url: link.url })}
+                                  placeholder={
+                                    link.linkType === 'COPY_FIELD'
+                                      ? 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
+                                      : 'https://instagram.com/yourname'
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor={`linkType-${link.id}`}>Type</Label>
+                                <select
+                                  id={`linkType-${link.id}`}
+                                  className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                                  value={link.linkType}
+                                  onChange={(e) => {
+                                    const newType = e.target.value as 'URL' | 'COPY_FIELD';
+                                    setLinksState((prev) =>
+                                      prev.map((l) =>
+                                        l.id === link.id ? { ...l, linkType: newType } : l,
+                                      ),
+                                    );
+                                    handleUpdateLink(link.id, { linkType: newType });
+                                  }}
+                                >
+                                  <option value="URL">🔗 Link</option>
+                                  <option value="COPY_FIELD">📋 Copy Field</option>
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor={`status-${link.id}`}>Status</Label>
+                                <select
+                                  id={`status-${link.id}`}
+                                  className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                                  value={link.status}
+                                  onChange={(e) => {
+                                    const newStatus = e.target.value as
+                                      | 'ACTIVE'
+                                      | 'HIDDEN'
+                                      | 'ARCHIVED';
+                                    setLinksState((prev) =>
+                                      prev.map((l) =>
+                                        l.id === link.id ? { ...l, status: newStatus } : l,
+                                      ),
+                                    );
+                                    handleUpdateLink(link.id, { status: newStatus });
+                                  }}
+                                >
+                                  <option value="ACTIVE">🟢 Active</option>
+                                  <option value="HIDDEN">👁️ Hidden</option>
+                                  <option value="ARCHIVED">🗑️ Archived</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <IconPicker
+                                id={`icon-${link.id}`}
+                                value={md.icon}
+                                onChange={(value) => {
+                                  const next = { ...md } as Record<string, any>;
+                                  if (value) {
+                                    next.icon = value;
+                                  } else {
+                                    delete next.icon;
+                                  }
+                                  handleUpdateLink(link.id, { metadata: next as any });
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleArchiveLink(link.id)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <span className="sr-only">Delete</span>
+                                🗑️
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
                 )}
-              </Button>
-            </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-            {linksState.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-                <div className="bg-primary/10 mb-4 rounded-full p-3">
-                  <LinkIcon className="text-primary h-8 w-8" />
+          {/* Pages Tab */}
+          <TabsContent value="pages" className="space-y-6">
+            <PagesManager profileId={profile.id} initialPages={pagesState} />
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>⚙️ Profile Settings</CardTitle>
+                <CardDescription>Basic information and theme</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="displayName">Profile name</Label>
+                    <Input
+                      id="displayName"
+                      value={profileState.displayName ?? ''}
+                      onChange={(e) => updateProfileDraft({ displayName: e.target.value })}
+                      onBlur={() => saveProfile({ displayName: profileState.displayName })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="slug">Username / slug</Label>
+                    <Input
+                      id="slug"
+                      value={profileState.slug}
+                      onChange={(e) => updateProfileDraft({ slug: slugify(e.target.value) })}
+                      onBlur={() => saveProfile({ slug: profileState.slug })}
+                    />
+                    <div className="text-muted-foreground text-xs">
+                      Public URL: /{profileState.slug}
+                    </div>
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold">No links yet</h3>
-                <p className="text-muted-foreground mt-2 max-w-xs text-sm">
-                  Start building your Linkforest by adding your first link
-                </p>
-                <Button
-                  type="button"
-                  size="lg"
-                  className="mt-6"
-                  onClick={() => titleInputRef.current?.focus()}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Your First Link
-                </Button>
-              </div>
-            ) : (
-              <LinksDndList
-                links={linksState}
-                onLinksChange={setLinksState}
-                onReorder={(orderedIds) => handleReorder(orderedIds)}
-                renderLink={(link, { dragHandle, isDragging }) => {
-                  const md = getLinkMetadata(link);
-                  const schedule = md.schedule as
-                    | { startsAt?: string; endsAt?: string }
-                    | undefined;
 
-                  return (
-                    <div
+                <div className="space-y-1">
+                  <Label htmlFor="bio">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    className="border-input bg-background min-h-[96px] w-full rounded-md border px-3 py-2 text-sm"
+                    value={profileState.bio ?? ''}
+                    onChange={(e) => updateProfileDraft({ bio: e.target.value })}
+                    onBlur={() => saveProfile({ bio: profileState.bio })}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="avatarUrl">Avatar Image URL</Label>
+                  <Input
+                    id="avatarUrl"
+                    value={profileState.image ?? ''}
+                    onChange={(e) => updateProfileDraft({ image: e.target.value })}
+                    onBlur={() =>
+                      saveProfile({
+                        image: profileState.image?.trim() ? profileState.image.trim() : null,
+                      })
+                    }
+                    placeholder="Paste image URL (ImgBB, Imgur, etc.)"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                  <div>
+                    <div className="font-medium">Published</div>
+                    <div className="text-muted-foreground text-xs">
+                      Turn off to hide your profile temporarily.
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span
                       className={cn(
-                        'border-border bg-card rounded-lg border p-3',
-                        isDragging && 'ring-ring ring-2',
+                        'text-xs font-medium',
+                        isPublished ? 'text-green-600' : 'text-muted-foreground',
                       )}
                     >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                        <div className="pt-1">{dragHandle}</div>
+                      {isPublished ? 'Published' : 'Draft'}
+                    </span>
+                    <Switch
+                      checked={isPublished}
+                      onCheckedChange={(checked) => {
+                        toast({
+                          title: checked ? 'Profile published' : 'Profile set to draft',
+                          description: checked
+                            ? 'Your profile is now live.'
+                            : 'Your profile is hidden (visitors will see a 404).',
+                        });
+                        saveProfile({ status: checked ? 'ACTIVE' : 'DISABLED' });
+                      }}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                        <div className="grid flex-1 gap-3 sm:grid-cols-2">
-                          <div className="space-y-1">
-                            <Label htmlFor={`title-${link.id}`}>Title</Label>
-                            <Input
-                              id={`title-${link.id}`}
-                              value={link.title}
-                              onChange={(e) =>
-                                setLinksState((prev) =>
-                                  prev.map((l) =>
-                                    l.id === link.id ? { ...l, title: e.target.value } : l,
-                                  ),
-                                )
-                              }
-                              onBlur={() => handleUpdateLink(link.id, { title: link.title })}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label htmlFor={`url-${link.id}`}>URL</Label>
-                            <Input
-                              id={`url-${link.id}`}
-                              value={link.url}
-                              onChange={(e) =>
-                                setLinksState((prev) =>
-                                  prev.map((l) =>
-                                    l.id === link.id ? { ...l, url: e.target.value } : l,
-                                  ),
-                                )
-                              }
-                              onBlur={() => handleUpdateLink(link.id, { url: link.url })}
-                            />
-                          </div>
-
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="space-y-1">
-                              <Label htmlFor={`display-${link.id}`}>Display</Label>
-                              <select
-                                id={`display-${link.id}`}
-                                className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                                value={md.display || 'button'}
-                                onChange={(e) => {
-                                  const next = {
-                                    ...md,
-                                    display: e.target.value,
-                                  };
-                                  handleUpdateLink(link.id, { metadata: next as any });
-                                }}
-                              >
-                                <option value="button">Button</option>
-                                <option value="icon">Icon</option>
-                              </select>
-                            </div>
-                            <IconPicker
-                              id={`icon-${link.id}`}
-                              value={md.icon}
-                              onChange={(value) => {
-                                const next = { ...md } as Record<string, any>;
-                                if (value) {
-                                  next.icon = value;
-                                } else {
-                                  delete next.icon;
-                                }
-                                handleUpdateLink(link.id, { metadata: next as any });
-                              }}
-                            />
-                          </div>
-
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="space-y-1">
-                              <Label htmlFor={`startsAt-${link.id}`}>Starts</Label>
-                              <Input
-                                id={`startsAt-${link.id}`}
-                                type="datetime-local"
-                                value={toLocalDatetimeValue(schedule?.startsAt)}
-                                onChange={(e) => {
-                                  const iso = toISOStringOrUndefined(e.target.value);
-                                  const nextSchedule = { ...(schedule ?? {}) } as Record<
-                                    string,
-                                    any
-                                  >;
-
-                                  if (iso) {
-                                    nextSchedule.startsAt = iso;
-                                  } else {
-                                    delete nextSchedule.startsAt;
-                                  }
-
-                                  const next = { ...md } as Record<string, any>;
-                                  if (!nextSchedule.startsAt && !nextSchedule.endsAt) {
-                                    delete next.schedule;
-                                  } else {
-                                    next.schedule = nextSchedule;
-                                  }
-
-                                  handleUpdateLink(link.id, { metadata: next as any });
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label htmlFor={`endsAt-${link.id}`}>Ends</Label>
-                              <Input
-                                id={`endsAt-${link.id}`}
-                                type="datetime-local"
-                                value={toLocalDatetimeValue(schedule?.endsAt)}
-                                onChange={(e) => {
-                                  const iso = toISOStringOrUndefined(e.target.value);
-                                  const nextSchedule = { ...(schedule ?? {}) } as Record<
-                                    string,
-                                    any
-                                  >;
-
-                                  if (iso) {
-                                    nextSchedule.endsAt = iso;
-                                  } else {
-                                    delete nextSchedule.endsAt;
-                                  }
-
-                                  const next = { ...md } as Record<string, any>;
-                                  if (!nextSchedule.startsAt && !nextSchedule.endsAt) {
-                                    delete next.schedule;
-                                  } else {
-                                    next.schedule = nextSchedule;
-                                  }
-
-                                  handleUpdateLink(link.id, { metadata: next as any });
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          <label className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={link.status === 'ACTIVE'}
-                              onChange={(e) =>
-                                handleUpdateLink(link.id, {
-                                  status: e.target.checked ? 'ACTIVE' : 'HIDDEN',
-                                })
-                              }
-                            />
-                            <span>Enabled</span>
-                          </label>
-
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={() => handleArchiveLink(link.id)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }}
-              />
-            )}
-
-            <div className="text-muted-foreground text-xs">
-              Tip: drag the handle to reorder links. Hidden links won’t show on your public page.
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Profiles</CardTitle>
-            <CardDescription>Create up to 5 profiles</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-muted-foreground text-sm">{profilesUsedText}</div>
-            <Button type="button" onClick={() => setCreateOpen(true)} disabled={atProfileLimit}>
-              + Create New Profile
-            </Button>
-          </CardContent>
-          {atProfileLimit ? (
-            <CardContent className="pt-0">
-              <p className="text-muted-foreground text-sm">Maximum 5 profiles reached</p>
-            </CardContent>
-          ) : null}
-        </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>🔄 Profile Actions</CardTitle>
+                <CardDescription>Duplicate, export, or create new profiles</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-muted-foreground text-sm">{profilesUsedText}</div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => setActionsOpen(true)}>
+                    <MoreHorizontal className="mr-2 h-4 w-4" />
+                    Actions
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => setCreateOpen(true)}
+                    disabled={atProfileLimit}
+                  >
+                    + Create New Profile
+                  </Button>
+                </div>
+              </CardContent>
+              {atProfileLimit ? (
+                <CardContent className="pt-0">
+                  <p className="text-muted-foreground text-sm">Maximum 5 profiles reached</p>
+                </CardContent>
+              ) : null}
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {isPending ? (
           <div className="text-muted-foreground text-sm" aria-live="polite">
@@ -1174,6 +1085,7 @@ export function ProfileEditor({
         ) : null}
       </div>
 
+      {/* Live Preview */}
       <div className="border-border bg-card rounded-lg border">
         <div className="border-border border-b p-3">
           <div className="text-sm font-medium">Live preview</div>

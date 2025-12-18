@@ -45,6 +45,11 @@ enum LinkStatus {
   ARCHIVED
 }
 
+enum LinkType {
+  URL
+  COPY_FIELD
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -87,8 +92,27 @@ model Profile {
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   links Link[]
+  pages Page[]
 
   @@index([userId])
+}
+
+model Page {
+  id        String  @id @default(cuid())
+  profileId String
+  slug      String
+  title     String
+  content   String  @db.Text
+  isPublished Boolean @default(true)
+  order     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, slug])
+  @@index([profileId, order])
 }
 
 model Link {
@@ -97,7 +121,8 @@ model Link {
   slug      String
   title     String
   url       String
-  position  Int    @default(0)
+  linkType  LinkType @default(URL)
+  position  Int      @default(0)
 
   metadata  Json @default(dbgenerated("'{}'::jsonb"))
 

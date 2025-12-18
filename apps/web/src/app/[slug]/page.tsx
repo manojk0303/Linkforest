@@ -51,12 +51,18 @@ export default async function PublicProfilePage({ params }: { params: { slug: st
         where: { deletedAt: null, status: { in: ['ACTIVE', 'HIDDEN'] } },
         orderBy: { position: 'asc' },
       },
+      pages: {
+        where: { isPublished: true },
+        orderBy: { order: 'asc' },
+      },
     },
   });
 
   if (!profile) {
     notFound();
   }
+
+  const theme = normalizeThemeSettings(profile.themeSettings);
 
   return (
     <ProfilePreview
@@ -65,17 +71,23 @@ export default async function PublicProfilePage({ params }: { params: { slug: st
         displayName: profile.displayName,
         bio: profile.bio,
         image: profile.image,
-        themeSettings: normalizeThemeSettings(profile.themeSettings),
+        themeSettings: theme,
       }}
       links={profile.links.map((l) => ({
         id: l.id,
         title: l.title,
         url: l.url,
+        linkType: l.linkType,
         status: l.status,
         deletedAt: l.deletedAt,
         metadata: l.metadata,
       }))}
       showQr
+      pages={profile.pages.map((p) => ({
+        id: p.id,
+        title: p.title,
+        slug: p.slug,
+      }))}
     />
   );
 }

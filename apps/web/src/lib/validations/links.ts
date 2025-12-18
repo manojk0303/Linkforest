@@ -27,7 +27,8 @@ export const createLinkSchema = z
   .object({
     profileId: z.string().min(1),
     title: z.string().min(1).max(120),
-    url: httpUrlSchema,
+    url: z.string().min(1).max(500),
+    linkType: z.enum(['URL', 'COPY_FIELD']).optional(),
     slug: z
       .string()
       .min(2)
@@ -37,17 +38,58 @@ export const createLinkSchema = z
     status: z.enum(['ACTIVE', 'HIDDEN', 'ARCHIVED']).optional(),
     metadata: linkMetadataSchema.optional(),
   })
-  .strict();
+  .superRefine((data, ctx) => {
+    // URL validation - only require HTTP URL for URL type links
+    if (data.linkType !== 'COPY_FIELD') {
+      try {
+        const url = new URL(data.url);
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Please enter a valid URL (e.g., https://instagram.com/yourname)',
+            path: ['url'],
+          });
+        }
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Please enter a valid URL (e.g., https://instagram.com/yourname)',
+          path: ['url'],
+        });
+      }
+    }
+  });
 
 export const updateLinkSchema = z
   .object({
     title: z.string().min(1).max(120).optional(),
-    url: httpUrlSchema.optional(),
+    url: z.string().min(1).max(500).optional(),
+    linkType: z.enum(['URL', 'COPY_FIELD']).optional(),
     status: z.enum(['ACTIVE', 'HIDDEN', 'ARCHIVED']).optional(),
     position: z.number().int().min(0).optional(),
     metadata: linkMetadataSchema.optional(),
   })
-  .strict();
+  .superRefine((data, ctx) => {
+    // URL validation - only require HTTP URL for URL type links
+    if (data.url && data.linkType !== 'COPY_FIELD') {
+      try {
+        const url = new URL(data.url);
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Please enter a valid URL (e.g., https://instagram.com/yourname)',
+            path: ['url'],
+          });
+        }
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Please enter a valid URL (e.g., https://instagram.com/yourname)',
+          path: ['url'],
+        });
+      }
+    }
+  });
 
 export const reorderLinksSchema = z
   .object({

@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import type { Prisma } from '@prisma/client';
 import {
   Github,
@@ -9,6 +10,8 @@ import {
   Linkedin,
   Twitter,
   Youtube,
+  Copy,
+  ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -25,10 +28,17 @@ export type PreviewProfile = {
   themeSettings: ThemeSettings;
 };
 
+export type PreviewPage = {
+  id: string;
+  title: string;
+  slug: string;
+};
+
 export type PreviewLink = {
   id: string;
   title: string;
   url: string;
+  linkType: 'URL' | 'COPY_FIELD';
   status: 'ACTIVE' | 'HIDDEN' | 'ARCHIVED';
   deletedAt?: Date | null;
   metadata: Prisma.JsonValue;
@@ -68,11 +78,13 @@ function getFontVariable(fontFamily?: string): string {
 export function ProfilePreview({
   profile,
   links,
+  pages = [],
   className,
   showQr,
 }: {
   profile: PreviewProfile;
   links: PreviewLink[];
+  pages?: PreviewPage[];
   className?: string;
   showQr?: boolean;
 }) {
@@ -146,21 +158,86 @@ export function ProfilePreview({
         </div>
 
         <div className="mt-8 space-y-3">
-          {buttonLinks.map((l) => (
-            <a
-              key={l.id}
-              href={`/api/links/${l.id}/click`}
-              className="block w-full px-4 py-3 text-center text-sm font-medium shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
-              style={{
-                background: theme.buttonColor,
-                color: theme.buttonTextColor,
-                borderRadius: theme.buttonRadius,
-              }}
-            >
-              {l.title}
-            </a>
-          ))}
+          {buttonLinks.map((l) => {
+            if (l.linkType === 'COPY_FIELD') {
+              // Render copy field UI
+              return (
+                <div key={l.id} className="group">
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-white/15 bg-white/5 p-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      {l.metadata && typeof l.metadata === 'object' && (l.metadata as any).icon && (
+                        <div className="rounded-lg bg-white/10 p-2">
+                          <Globe className="h-4 w-4" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="mb-1 text-sm font-medium">{l.title}</p>
+                        <input
+                          type="text"
+                          value={l.url}
+                          readOnly
+                          className="w-full cursor-text border-0 bg-transparent text-sm opacity-90 outline-none"
+                          onClick={(e) => e.currentTarget.select()}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(l.url);
+                        // You could add a toast here
+                      }}
+                      className="inline-flex items-center gap-1 rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/40"
+                      style={{
+                        color: theme.buttonTextColor,
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            // Regular clickable link
+            return (
+              <a
+                key={l.id}
+                href={`/api/links/${l.id}/click`}
+                className="block w-full px-4 py-3 text-center text-sm font-medium shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+                style={{
+                  background: theme.buttonColor,
+                  color: theme.buttonTextColor,
+                  borderRadius: theme.buttonRadius,
+                }}
+              >
+                {l.title}
+              </a>
+            );
+          })}
         </div>
+
+        {/* Pages Section */}
+        {pages.length > 0 && (
+          <div className="mt-8">
+            <h2 className="mb-4 text-lg font-semibold">Pages</h2>
+            <div className="space-y-3">
+              {pages.map((page) => (
+                <Link
+                  key={page.id}
+                  href={`/${profile.slug}/${page.slug}`}
+                  className="flex items-center justify-between rounded-lg border border-white/15 bg-white/5 p-3 transition-colors hover:bg-white/10"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  }}
+                >
+                  <span className="font-medium">{page.title}</span>
+                  <ChevronRight className="h-4 w-4 opacity-60" />
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {showQr ? (
           <div className="mt-8 flex flex-col items-center gap-2">
