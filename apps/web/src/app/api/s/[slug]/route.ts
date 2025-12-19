@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { detectDeviceType } from '@/lib/device-detect';
+import { resolveCountry, shouldSkipAnalytics } from '@/lib/geoip';
 
-function getCountryFromRequest(request: NextRequest): string | null {
-  // Simple implementation - you can enhance this later
-  const country =
-    request.headers.get('x-country') || request.headers.get('cf-ipcountry') || request.geo?.country;
-  return country || null;
+async function getCountryFromRequest(request: NextRequest): Promise<string | null> {
+  return resolveCountry(request.headers);
 }
 
 export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
@@ -35,21 +33,22 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
       return NextResponse.redirect(new URL('/404', request.url));
     }
 
-    // Get analytics data
-    const country = await getCountryFromRequest(request);
     const deviceType = detectDeviceType(request.headers.get('user-agent') || '');
     const referrer = request.headers.get('referer') || '';
 
-    // Record the click
-    await prisma.shortLinkClick.create({
-      data: {
-        shortLinkId: shortLink.id,
-        country: country || null,
-        deviceType,
-        referrer,
-        userAgent: request.headers.get('user-agent'),
-      },
-    });
+    if (!shouldSkipAnalytics(request.headers)) {
+      const country = await getCountryFromRequest(request);
+
+      await prisma.shortLinkClick.create({
+        data: {
+          shortLinkId: shortLink.id,
+          country: country || null,
+          deviceType,
+          referrer,
+          userAgent: request.headers.get('user-agent'),
+        },
+      });
+    }
 
     // Redirect to target URL
     return NextResponse.redirect(shortLink.targetUrl, {

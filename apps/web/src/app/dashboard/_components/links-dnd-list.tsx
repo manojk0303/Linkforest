@@ -103,7 +103,7 @@ export function LinksDndList<TLink extends DndLink>({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={links.map((l) => l.id)}>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {links.map((link) => (
             <SortableRow key={link.id} id={link.id}>
               {({ handleProps, isDragging }) =>
