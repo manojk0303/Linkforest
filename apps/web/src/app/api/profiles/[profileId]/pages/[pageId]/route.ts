@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+import type { Page as PrismaPage } from '@prisma/client';
+
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-helpers';
 import { updatePageSchema } from '@/lib/validations/pages';
-import type { PageUpdateResponse } from '@/types/pages';
+import type { Page, PageDeleteResponse, PageUpdateResponse } from '@/types/pages';
+
+function serializePage(page: PrismaPage): Page {
+  return {
+    ...page,
+    createdAt: page.createdAt.toISOString(),
+    updatedAt: page.updatedAt.toISOString(),
+  };
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -60,7 +71,10 @@ export async function PATCH(
     });
 
     if (!page) {
-      return NextResponse.json({ ok: false, error: 'Page not found' }, { status: 404 });
+      return NextResponse.json<PageUpdateResponse>(
+        { ok: false, error: 'Page not found' },
+        { status: 404 },
+      );
     }
 
     // Check slug uniqueness if being updated
@@ -72,7 +86,7 @@ export async function PATCH(
       });
 
       if (existing && existing.id !== pageId) {
-        return NextResponse.json(
+        return NextResponse.json<PageUpdateResponse>(
           { ok: false, error: 'Page with this slug already exists' },
           { status: 400 },
         );
@@ -91,15 +105,18 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json({ ok: true, page: updatedPage });
+    return NextResponse.json<PageUpdateResponse>({ ok: true, page: serializePage(updatedPage) });
   } catch (error) {
     console.error('Error updating page:', error);
-    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json<PageUpdateResponse>(
+      { ok: false, error: 'Internal server error' },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { profileId: string; pageId: string } },
 ) {
   try {
@@ -117,16 +134,22 @@ export async function DELETE(
     });
 
     if (!page) {
-      return NextResponse.json({ ok: false, error: 'Page not found' }, { status: 404 });
+      return NextResponse.json<PageDeleteResponse>(
+        { ok: false, error: 'Page not found' },
+        { status: 404 },
+      );
     }
 
     await prisma.page.delete({
       where: { id: pageId },
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json<PageDeleteResponse>({ ok: true });
   } catch (error) {
     console.error('Error deleting page:', error);
-    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json<PageDeleteResponse>(
+      { ok: false, error: 'Internal server error' },
+      { status: 500 },
+    );
   }
 }
