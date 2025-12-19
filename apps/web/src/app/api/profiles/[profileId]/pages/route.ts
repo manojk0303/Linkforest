@@ -1,9 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import type { Page as PrismaPage } from '@prisma/client';
+
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-helpers';
 import { createPageSchema } from '@/lib/validations/pages';
-import type { PageCreateResponse } from '@/types/pages';
+import type { Page, PageCreateResponse, PageListResponse } from '@/types/pages';
+
+function serializePage(page: PrismaPage): Page {
+  return {
+    ...page,
+    createdAt: page.createdAt.toISOString(),
+    updatedAt: page.updatedAt.toISOString(),
+  };
+}
 
 export async function POST(request: NextRequest, { params }: { params: { profileId: string } }) {
   try {
@@ -53,7 +63,10 @@ export async function POST(request: NextRequest, { params }: { params: { profile
     });
 
     if (!profile) {
-      return NextResponse.json({ ok: false, error: 'Profile not found' }, { status: 404 });
+      return NextResponse.json<PageCreateResponse>(
+        { ok: false, error: 'Profile not found' },
+        { status: 404 },
+      );
     }
 
     // Check if slug already exists for this profile
@@ -62,7 +75,7 @@ export async function POST(request: NextRequest, { params }: { params: { profile
     });
 
     if (existing) {
-      return NextResponse.json(
+      return NextResponse.json<PageCreateResponse>(
         { ok: false, error: 'Page with this slug already exists' },
         { status: 400 },
       );
@@ -90,14 +103,17 @@ export async function POST(request: NextRequest, { params }: { params: { profile
       },
     });
 
-    return NextResponse.json({ ok: true, page });
+    return NextResponse.json<PageCreateResponse>({ ok: true, page: serializePage(page) });
   } catch (error) {
     console.error('Error creating page:', error);
-    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json<PageCreateResponse>(
+      { ok: false, error: 'Internal server error' },
+      { status: 500 },
+    );
   }
 }
 
-export async function GET(request: NextRequest, { params }: { params: { profileId: string } }) {
+export async function GET(_request: NextRequest, { params }: { params: { profileId: string } }) {
   try {
     const user = await requireAuth();
     const { profileId } = params;
@@ -109,7 +125,10 @@ export async function GET(request: NextRequest, { params }: { params: { profileI
     });
 
     if (!profile) {
-      return NextResponse.json({ ok: false, error: 'Profile not found' }, { status: 404 });
+      return NextResponse.json<PageListResponse>(
+        { ok: false, error: 'Profile not found' },
+        { status: 404 },
+      );
     }
 
     const pages = await prisma.page.findMany({
@@ -117,9 +136,12 @@ export async function GET(request: NextRequest, { params }: { params: { profileI
       orderBy: { order: 'asc' },
     });
 
-    return NextResponse.json({ ok: true, pages });
+    return NextResponse.json<PageListResponse>({ ok: true, pages: pages.map(serializePage) });
   } catch (error) {
     console.error('Error listing pages:', error);
-    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json<PageListResponse>(
+      { ok: false, error: 'Internal server error' },
+      { status: 500 },
+    );
   }
 }

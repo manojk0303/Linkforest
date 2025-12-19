@@ -296,12 +296,15 @@ export default async function DashboardPage({
             }))}
             pages={profile.pages.map((p) => ({
               id: p.id,
+              profileId: p.profileId,
               title: p.title,
               slug: p.slug,
               content: p.content,
               icon: p.icon,
               isPublished: p.isPublished,
               order: p.order,
+              createdAt: p.createdAt.toISOString(),
+              updatedAt: p.updatedAt.toISOString(),
             }))}
           />
         </div>

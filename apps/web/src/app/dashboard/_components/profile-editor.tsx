@@ -54,6 +54,7 @@ import {
   type PreviewProfile,
 } from '@/components/profile-preview';
 import { PagesManager } from './pages-manager';
+import type { Page as PageType } from '@/types/pages';
 import { slugify } from '@/lib/slugs';
 import type { ThemeSettings } from '@/lib/theme-settings';
 
@@ -98,15 +99,7 @@ export type EditorLink = {
   metadata: Prisma.JsonValue;
 };
 
-export type EditorPage = {
-  id: string;
-  title: string;
-  slug: string;
-  content: string;
-  icon?: string | null;
-  isPublished: boolean;
-  order: number;
-};
+export type EditorPage = PageType;
 
 function isValidHttpUrl(value: string) {
   try {
@@ -134,9 +127,12 @@ function downloadTextFile(content: string, mimeType: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function getLinkMetadata(link: Pick<EditorLink, 'metadata'>): Record<string, any> {
-  if (!link.metadata || typeof link.metadata !== 'object') return {};
-  return link.metadata as Record<string, any>;
+function getLinkMetadata(link: Pick<EditorLink, 'metadata'>): Prisma.JsonObject {
+  if (!link.metadata || typeof link.metadata !== 'object' || Array.isArray(link.metadata)) {
+    return {};
+  }
+
+  return link.metadata as Prisma.JsonObject;
 }
 
 export function ProfileEditor({
@@ -322,7 +318,7 @@ export function ProfileEditor({
       return;
     }
 
-    setLinksState((prev) => prev.map((l) => (l.id === tempId ? (result.link as any) : l)));
+    setLinksState((prev) => prev.map((l) => (l.id === tempId ? result.link : l)));
     setAddingLink(false);
     toast({ title: 'Link added', description: 'Your link has been saved.' });
     router.refresh();
@@ -950,15 +946,15 @@ export function ProfileEditor({
                                 </div>
                                 <IconPicker
                                   id={`icon-${link.id}`}
-                                  value={md.icon}
+                                  value={typeof md.icon === 'string' ? md.icon : undefined}
                                   onChange={(value) => {
-                                    const next = { ...md } as Record<string, any>;
+                                    const next: Prisma.JsonObject = { ...md };
                                     if (value) {
                                       next.icon = value;
                                     } else {
                                       delete next.icon;
                                     }
-                                    handleUpdateLink(link.id, { metadata: next as any });
+                                    handleUpdateLink(link.id, { metadata: next });
                                   }}
                                 />
                               </div>

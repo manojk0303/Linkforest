@@ -29,7 +29,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Plus, Edit, Trash2, Eye, EyeOff, FileText } from 'lucide-react';
-import type { Page, PagesManagerProps } from '@/types/pages';
+import type { Page, PageFormProps, PagesManagerProps } from '@/types/pages';
 
 export function PagesManager({ profileId, initialPages }: PagesManagerProps) {
   const router = useRouter();
@@ -119,10 +119,10 @@ export function PagesManager({ profileId, initialPages }: PagesManagerProps) {
       });
 
       const text = await response.text();
-      let result: any = null;
+      let result: { ok: boolean; page?: Page; error?: string } | null = null;
       if (text) {
         try {
-          result = JSON.parse(text) as any;
+          result = JSON.parse(text) as { ok: boolean; page?: Page; error?: string };
         } catch {
           throw new Error(
             response.ok
@@ -132,7 +132,7 @@ export function PagesManager({ profileId, initialPages }: PagesManagerProps) {
         }
       }
 
-      if (!response.ok || !result?.ok) {
+      if (!response.ok || !result?.ok || !result.page) {
         throw new Error(result?.error || 'Failed to save page');
       }
 
@@ -178,10 +178,10 @@ export function PagesManager({ profileId, initialPages }: PagesManagerProps) {
       });
 
       const text = await response.text();
-      let result: any = null;
+      let result: { ok: boolean; error?: string } | null = null;
       if (text) {
         try {
-          result = JSON.parse(text) as any;
+          result = JSON.parse(text) as { ok: boolean; error?: string };
         } catch {
           throw new Error(
             response.ok
@@ -221,10 +221,10 @@ export function PagesManager({ profileId, initialPages }: PagesManagerProps) {
       });
 
       const text = await response.text();
-      let result: any = null;
+      let result: { ok: boolean; page?: Page; error?: string } | null = null;
       if (text) {
         try {
-          result = JSON.parse(text) as any;
+          result = JSON.parse(text) as { ok: boolean; page?: Page; error?: string };
         } catch {
           throw new Error(
             response.ok
@@ -234,7 +234,7 @@ export function PagesManager({ profileId, initialPages }: PagesManagerProps) {
         }
       }
 
-      if (!response.ok || !result?.ok) {
+      if (!response.ok || !result?.ok || !result.page) {
         throw new Error(result?.error || 'Failed to update page');
       }
 

@@ -6,7 +6,8 @@
 // TypeScript types derived from Zod schemas (imported from validation schemas)
 export type { CreatePageInput, UpdatePageInput } from '@/lib/validations/pages';
 
-// Database model types (what Prisma returns)
+// Page type used across API responses and client components.
+// NOTE: Dates are serialized as ISO strings when sent over the network / passed to client components.
 export type Page = {
   id: string;
   profileId: string;
@@ -16,8 +17,8 @@ export type Page = {
   icon: string | null;
   isPublished: boolean;
   order: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 };
 
 // Form state types used in UI components
@@ -97,14 +98,16 @@ export type PageFormProps = {
 };
 
 // Validation result types for better error handling
-export type ValidationResult<T> = {
-  success: true;
-  data: T;
-} | {
-  success: false;
-  error: string;
-  details?: unknown;
-};
+export type ValidationResult<T> =
+  | {
+      success: true;
+      data: T;
+    }
+  | {
+      success: false;
+      error: string;
+      details?: unknown;
+    };
 
 // Page operation types
 export type PageOperation = 'create' | 'update' | 'delete' | 'toggle';
