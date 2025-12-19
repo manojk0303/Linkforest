@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-helpers';
 import { updatePageSchema } from '@/lib/validations/pages';
-import type { UpdatePageInput, PageUpdateResponse } from '@/types/pages';
+import type { PageUpdateResponse } from '@/types/pages';
 
 export async function PATCH(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function PATCH(
 
     // Read request body only once to avoid "Body has already been read" error
     const body = await request.json();
-    
+
     const result = updatePageSchema.safeParse(body);
     if (!result.success) {
       console.error('Page update validation failed:', {
@@ -23,11 +23,11 @@ export async function PATCH(
         body,
         errors: result.error.flatten(),
       });
-      
+
       // Format validation errors in a more user-friendly way
       const fieldErrors: Record<string, string> = {};
       const formErrors = result.error.flatten().fieldErrors;
-      
+
       for (const [field, errors] of Object.entries(formErrors)) {
         if (errors && errors.length > 0) {
           fieldErrors[field] = errors[0]; // Take first error message

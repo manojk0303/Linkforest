@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { detectDeviceType } from '@/lib/device-detect';
+import { resolveCountry, shouldSkipAnalytics } from '@/lib/geoip';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,11 +26,11 @@ export async function POST(request: NextRequest) {
     const userAgent = request.headers.get('user-agent');
     const deviceType = detectDeviceType(userAgent);
 
-    // Get country from header (set by Vercel edge middleware or similar)
-    const country =
-      request.headers.get('cloudflare-ipcountry') ||
-      request.headers.get('x-vercel-ip-country') ||
-      'US';
+    if (shouldSkipAnalytics(request.headers)) {
+      return NextResponse.json({ success: true, skipped: true }, { status: 200 });
+    }
+
+    const country = await resolveCountry(request.headers);
 
     const analytics = await prisma.analytics.create({
       data: {
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
         referrer: referrer || request.headers.get('referer') || null,
         deviceType,
         userAgent: userAgent || null,
-        country: country && country.length === 2 ? country : 'US',
+        country,
       },
     });
 

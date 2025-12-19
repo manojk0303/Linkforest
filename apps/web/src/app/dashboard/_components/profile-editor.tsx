@@ -3,7 +3,18 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Prisma } from '@prisma/client';
-import { CheckCircle2, MoreHorizontal, Link as LinkIcon, Plus, Link2, Copy, FileText, Settings, Trash2, RefreshCw } from 'lucide-react';
+import {
+  CheckCircle2,
+  MoreHorizontal,
+  Link as LinkIcon,
+  Plus,
+  Link2,
+  Copy,
+  FileText,
+  Settings,
+  Trash2,
+  RefreshCw,
+} from 'lucide-react';
 
 import {
   Badge,
@@ -152,7 +163,6 @@ export function ProfileEditor({
 
   const [profileState, setProfileState] = useState(profile);
   const [linksState, setLinksState] = useState<EditorLink[]>(links);
-  const [pagesState, setPagesState] = useState<EditorPage[]>(pages);
 
   const [switchingProfile, setSwitchingProfile] = useState(false);
 
@@ -845,111 +855,116 @@ export function ProfileEditor({
                       return (
                         <div
                           className={cn(
-                            'border-border bg-card rounded-lg border p-3',
+                            'border-border bg-card rounded-xl border p-4 shadow-sm sm:p-5',
                             isDragging && 'ring-ring ring-2',
                           )}
                         >
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                            <div className="pt-1">{dragHandle}</div>
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                            <div className="pt-0.5">{dragHandle}</div>
 
-                            <div className="grid flex-1 gap-3 sm:grid-cols-2">
-                              <div className="space-y-1">
-                                <Label htmlFor={`title-${link.id}`}>Title</Label>
-                                <Input
-                                  id={`title-${link.id}`}
-                                  value={link.title}
-                                  onChange={(e) =>
-                                    setLinksState((prev) =>
-                                      prev.map((l) =>
-                                        l.id === link.id ? { ...l, title: e.target.value } : l,
-                                      ),
-                                    )
-                                  }
-                                  onBlur={() => handleUpdateLink(link.id, { title: link.title })}
-                                />
+                            <div className="grid flex-1 gap-4">
+                              <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="space-y-1">
+                                  <Label htmlFor={`title-${link.id}`}>Title</Label>
+                                  <Input
+                                    id={`title-${link.id}`}
+                                    value={link.title}
+                                    onChange={(e) =>
+                                      setLinksState((prev) =>
+                                        prev.map((l) =>
+                                          l.id === link.id ? { ...l, title: e.target.value } : l,
+                                        ),
+                                      )
+                                    }
+                                    onBlur={() => handleUpdateLink(link.id, { title: link.title })}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label htmlFor={`url-${link.id}`}>
+                                    {link.linkType === 'COPY_FIELD' ? 'Text to Copy' : 'URL'}
+                                  </Label>
+                                  <Input
+                                    id={`url-${link.id}`}
+                                    value={link.url}
+                                    onChange={(e) =>
+                                      setLinksState((prev) =>
+                                        prev.map((l) =>
+                                          l.id === link.id ? { ...l, url: e.target.value } : l,
+                                        ),
+                                      )
+                                    }
+                                    onBlur={() => handleUpdateLink(link.id, { url: link.url })}
+                                    placeholder={
+                                      link.linkType === 'COPY_FIELD'
+                                        ? 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
+                                        : 'https://instagram.com/yourname'
+                                    }
+                                  />
+                                </div>
                               </div>
-                              <div className="space-y-1">
-                                <Label htmlFor={`url-${link.id}`}>
-                                  {link.linkType === 'COPY_FIELD' ? 'Text to Copy' : 'URL'}
-                                </Label>
-                                <Input
-                                  id={`url-${link.id}`}
-                                  value={link.url}
-                                  onChange={(e) =>
-                                    setLinksState((prev) =>
-                                      prev.map((l) =>
-                                        l.id === link.id ? { ...l, url: e.target.value } : l,
-                                      ),
-                                    )
-                                  }
-                                  onBlur={() => handleUpdateLink(link.id, { url: link.url })}
-                                  placeholder={
-                                    link.linkType === 'COPY_FIELD'
-                                      ? 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
-                                      : 'https://instagram.com/yourname'
-                                  }
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label htmlFor={`linkType-${link.id}`}>Type</Label>
-                                <select
-                                  id={`linkType-${link.id}`}
-                                  className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                                  value={link.linkType}
-                                  onChange={(e) => {
-                                    const newType = e.target.value as 'URL' | 'COPY_FIELD';
-                                    setLinksState((prev) =>
-                                      prev.map((l) =>
-                                        l.id === link.id ? { ...l, linkType: newType } : l,
-                                      ),
-                                    );
-                                    handleUpdateLink(link.id, { linkType: newType });
-                                  }}
+
+                              <div className="grid gap-4 sm:grid-cols-3">
+                                <div className="space-y-1">
+                                  <Label htmlFor={`linkType-${link.id}`}>Type</Label>
+                                  <select
+                                    id={`linkType-${link.id}`}
+                                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                                    value={link.linkType}
+                                    onChange={(e) => {
+                                      const newType = e.target.value as 'URL' | 'COPY_FIELD';
+                                      setLinksState((prev) =>
+                                        prev.map((l) =>
+                                          l.id === link.id ? { ...l, linkType: newType } : l,
+                                        ),
+                                      );
+                                      handleUpdateLink(link.id, { linkType: newType });
+                                    }}
                                   >
-                                  <option value="URL">Link</option>
-                                  <option value="COPY_FIELD">Copy Field</option>
+                                    <option value="URL">Link</option>
+                                    <option value="COPY_FIELD">Copy Field</option>
                                   </select>
-                              </div>
-                              <div className="space-y-1">
-                                <Label htmlFor={`status-${link.id}`}>Status</Label>
-                                <select
-                                  id={`status-${link.id}`}
-                                  className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                                  value={link.status}
-                                  onChange={(e) => {
-                                    const newStatus = e.target.value as
-                                      | 'ACTIVE'
-                                      | 'HIDDEN'
-                                      | 'ARCHIVED';
-                                    setLinksState((prev) =>
-                                      prev.map((l) =>
-                                        l.id === link.id ? { ...l, status: newStatus } : l,
-                                      ),
-                                    );
-                                    handleUpdateLink(link.id, { status: newStatus });
-                                  }}
+                                </div>
+                                <div className="space-y-1">
+                                  <Label htmlFor={`status-${link.id}`}>Status</Label>
+                                  <select
+                                    id={`status-${link.id}`}
+                                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                                    value={link.status}
+                                    onChange={(e) => {
+                                      const newStatus = e.target.value as
+                                        | 'ACTIVE'
+                                        | 'HIDDEN'
+                                        | 'ARCHIVED';
+                                      setLinksState((prev) =>
+                                        prev.map((l) =>
+                                          l.id === link.id ? { ...l, status: newStatus } : l,
+                                        ),
+                                      );
+                                      handleUpdateLink(link.id, { status: newStatus });
+                                    }}
                                   >
-                                  <option value="ACTIVE">Active</option>
-                                  <option value="HIDDEN">Hidden</option>
-                                  <option value="ARCHIVED">Archived</option>
+                                    <option value="ACTIVE">Active</option>
+                                    <option value="HIDDEN">Hidden</option>
+                                    <option value="ARCHIVED">Archived</option>
                                   </select>
+                                </div>
+                                <IconPicker
+                                  id={`icon-${link.id}`}
+                                  value={md.icon}
+                                  onChange={(value) => {
+                                    const next = { ...md } as Record<string, any>;
+                                    if (value) {
+                                      next.icon = value;
+                                    } else {
+                                      delete next.icon;
+                                    }
+                                    handleUpdateLink(link.id, { metadata: next as any });
+                                  }}
+                                />
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              <IconPicker
-                                id={`icon-${link.id}`}
-                                value={md.icon}
-                                onChange={(value) => {
-                                  const next = { ...md } as Record<string, any>;
-                                  if (value) {
-                                    next.icon = value;
-                                  } else {
-                                    delete next.icon;
-                                  }
-                                  handleUpdateLink(link.id, { metadata: next as any });
-                                }}
-                              />
+                            <div className="flex justify-end lg:pt-0.5">
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -973,7 +988,7 @@ export function ProfileEditor({
 
           {/* Pages Tab */}
           <TabsContent value="pages" className="space-y-6">
-            <PagesManager profileId={profile.id} initialPages={pagesState} />
+            <PagesManager profileId={profile.id} initialPages={pages} />
           </TabsContent>
 
           {/* Settings Tab */}

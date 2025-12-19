@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Button,
@@ -29,17 +29,17 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Plus, Edit, Trash2, Eye, EyeOff, FileText } from 'lucide-react';
-import type { Page, PageFormProps, PagesManagerProps } from '@/types/pages';
+import type { Page, PagesManagerProps } from '@/types/pages';
 
-export function PagesManager({
-  profileId,
-  initialPages,
-}: PagesManagerProps) {
+export function PagesManager({ profileId, initialPages }: PagesManagerProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
 
   const [pages, setPages] = useState<Page[]>(initialPages);
   const [createOpen, setCreateOpen] = useState(false);
+
+  useEffect(() => {
+    setPages(initialPages);
+  }, [initialPages]);
   const [editOpen, setEditOpen] = useState(false);
   const [editingPage, setEditingPage] = useState<Page | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
@@ -102,21 +102,38 @@ export function PagesManager({
     setSubmitting(true);
 
     try {
-      const result = await fetch(`/api/profiles/${profileId}/pages`, {
+      const endpoint = editingPage
+        ? `/api/profiles/${profileId}/pages/${editingPage.id}`
+        : `/api/profiles/${profileId}/pages`;
+
+      const response = await fetch(endpoint, {
         method: editingPage ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...(editingPage && { pageId: editingPage.id }),
           title: title.trim(),
           slug: slug.trim().toLowerCase(),
           content: content.trim(),
           icon,
           isPublished,
         }),
-      }).then((r) => r.json());
+      });
 
-      if (!result.ok) {
-        throw new Error(result.error || 'Failed to save page');
+      const text = await response.text();
+      let result: any = null;
+      if (text) {
+        try {
+          result = JSON.parse(text) as any;
+        } catch {
+          throw new Error(
+            response.ok
+              ? 'Invalid server response'
+              : `Failed to save page (server returned ${response.status})`,
+          );
+        }
+      }
+
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.error || 'Failed to save page');
       }
 
       const updatedPage = result.page;
@@ -156,12 +173,26 @@ export function PagesManager({
     }
 
     try {
-      const result = await fetch(`/api/profiles/${profileId}/pages/${pageId}`, {
+      const response = await fetch(`/api/profiles/${profileId}/pages/${pageId}`, {
         method: 'DELETE',
-      }).then((r) => r.json());
+      });
 
-      if (!result.ok) {
-        throw new Error(result.error || 'Failed to delete page');
+      const text = await response.text();
+      let result: any = null;
+      if (text) {
+        try {
+          result = JSON.parse(text) as any;
+        } catch {
+          throw new Error(
+            response.ok
+              ? 'Invalid server response'
+              : `Failed to delete page (server returned ${response.status})`,
+          );
+        }
+      }
+
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.error || 'Failed to delete page');
       }
 
       setPages((prev) => prev.filter((p) => p.id !== pageId));
@@ -183,14 +214,28 @@ export function PagesManager({
 
   async function handleTogglePublish(pageId: string, published: boolean) {
     try {
-      const result = await fetch(`/api/profiles/${profileId}/pages/${pageId}`, {
+      const response = await fetch(`/api/profiles/${profileId}/pages/${pageId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPublished: published }),
-      }).then((r) => r.json());
+      });
 
-      if (!result.ok) {
-        throw new Error(result.error || 'Failed to update page');
+      const text = await response.text();
+      let result: any = null;
+      if (text) {
+        try {
+          result = JSON.parse(text) as any;
+        } catch {
+          throw new Error(
+            response.ok
+              ? 'Invalid server response'
+              : `Failed to update page (server returned ${response.status})`,
+          );
+        }
+      }
+
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.error || 'Failed to update page');
       }
 
       const updatedPage = result.page;

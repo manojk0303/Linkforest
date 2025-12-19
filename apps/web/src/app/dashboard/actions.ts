@@ -347,7 +347,7 @@ function escapeCsv(value: string) {
   return value;
 }
 
-export async function createPageAction(input: unknown) {
+export async function createPageAction(profileId: string, input: unknown) {
   const user = await requireAuth();
 
   const { createPageSchema } = await import('@/lib/validations/pages');
@@ -356,7 +356,7 @@ export async function createPageAction(input: unknown) {
     return { ok: false as const, error: 'Validation failed', details: result.error.flatten() };
   }
 
-  const { profileId, title, slug, content, icon, isPublished, order } = result.data;
+  const { title, slug, content, icon, isPublished, order } = result.data;
 
   // Verify profile ownership
   const profile = await prisma.profile.findFirst({

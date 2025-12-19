@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
+
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-helpers';
 import { createPageSchema } from '@/lib/validations/pages';
-import type { CreatePageInput, PageCreateResponse } from '@/types/pages';
+import type { PageCreateResponse } from '@/types/pages';
 
 export async function POST(request: NextRequest, { params }: { params: { profileId: string } }) {
   try {
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest, { params }: { params: { profile
 
     // Read request body only once to avoid "Body has already been read" error
     const body = await request.json();
-    
+
     const result = createPageSchema.safeParse(body);
     if (!result.success) {
       console.error('Page creation validation failed:', {
@@ -19,11 +20,11 @@ export async function POST(request: NextRequest, { params }: { params: { profile
         body,
         errors: result.error.flatten(),
       });
-      
+
       // Format validation errors in a more user-friendly way
       const fieldErrors: Record<string, string> = {};
       const formErrors = result.error.flatten().fieldErrors;
-      
+
       for (const [field, errors] of Object.entries(formErrors)) {
         if (errors && errors.length > 0) {
           fieldErrors[field] = errors[0]; // Take first error message
