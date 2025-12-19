@@ -121,7 +121,7 @@ export default async function DashboardPage({
     );
   }
 
-  const [totalClicks, clicks7d] = await Promise.all([
+  const [totalClicks, clicks7d, shortLinks] = await Promise.all([
     prisma.analytics.count({
       where: { link: { profileId: profile.id } },
     }),
@@ -131,6 +131,32 @@ export default async function DashboardPage({
         clickedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
       },
     }),
+    user.subscriptionTier === 'PRO'
+      ? prisma.shortLink.findMany({
+          where: {
+            userId: user.id,
+            OR: [{ profileId: profile.id }, { profileId: null }],
+          },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            slug: true,
+            targetUrl: true,
+            title: true,
+            isActive: true,
+            createdAt: true,
+          },
+        })
+      : Promise.resolve(
+          [] as Array<{
+            id: string;
+            slug: string;
+            targetUrl: string;
+            title: string | null;
+            isActive: boolean;
+            createdAt: Date;
+          }>,
+        ),
   ]);
 
   return (
@@ -305,6 +331,14 @@ export default async function DashboardPage({
               order: p.order,
               createdAt: p.createdAt.toISOString(),
               updatedAt: p.updatedAt.toISOString(),
+            }))}
+            shortLinks={shortLinks.map((s) => ({
+              id: s.id,
+              slug: s.slug,
+              targetUrl: s.targetUrl,
+              title: s.title,
+              isActive: s.isActive,
+              createdAt: s.createdAt.toISOString(),
             }))}
           />
         </div>

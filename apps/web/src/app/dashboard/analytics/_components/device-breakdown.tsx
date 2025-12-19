@@ -10,11 +10,17 @@ interface DeviceData {
 
 interface DeviceBreakdownProps {
   devices: DeviceData[];
+  title?: string;
+  description?: string;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8'];
 
-export function DeviceBreakdown({ devices }: DeviceBreakdownProps) {
+export function DeviceBreakdown({
+  devices,
+  title = 'Device Breakdown',
+  description = 'Clicks by device type',
+}: DeviceBreakdownProps) {
   const chartData = devices.map((d) => ({
     name: d.deviceType,
     value: d._count.id,
@@ -23,8 +29,8 @@ export function DeviceBreakdown({ devices }: DeviceBreakdownProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Device Breakdown</CardTitle>
-        <CardDescription>Clicks by device type</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         {devices.length === 0 ? (

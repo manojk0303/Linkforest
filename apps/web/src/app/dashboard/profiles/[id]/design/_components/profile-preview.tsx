@@ -36,8 +36,6 @@ function getFontVariable(fontFamily?: string): string {
 }
 
 export function ProfilePreview({ profile, links, settings }: ProfilePreviewProps) {
-  const isGradient = settings.backgroundColor?.includes('gradient');
-
   return (
     <div className="border-border overflow-hidden rounded-lg border">
       <div

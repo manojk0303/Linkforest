@@ -7,6 +7,8 @@ interface GeographicData {
 
 interface GeographicBreakdownProps {
   countries: GeographicData[];
+  title?: string;
+  description?: string;
 }
 
 const countryNames: Record<string, string> = {
@@ -26,14 +28,18 @@ const countryNames: Record<string, string> = {
   IN: 'India',
 };
 
-export function GeographicBreakdown({ countries }: GeographicBreakdownProps) {
+export function GeographicBreakdown({
+  countries,
+  title = 'Geographic Breakdown',
+  description = 'Clicks by country',
+}: GeographicBreakdownProps) {
   const total = countries.reduce((sum, c) => sum + c._count.id, 0);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Geographic Breakdown</CardTitle>
-        <CardDescription>Clicks by country</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         {countries.length === 0 ? (
