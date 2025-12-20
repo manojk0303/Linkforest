@@ -309,7 +309,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         ): value is {
           id: string;
           slug: string;
-          title?: string | null;
+          title: string | null;
           targetUrl: string;
           clicks: number;
         } => value !== null,
