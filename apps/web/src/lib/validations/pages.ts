@@ -27,7 +27,11 @@ export const createPageSchema = z
  */
 export const updatePageSchema = z
   .object({
-    title: z.string().min(1, 'Title is required').max(100, 'Title must be 100 characters or less').optional(),
+    title: z
+      .string()
+      .min(1, 'Title is required')
+      .max(100, 'Title must be 100 characters or less')
+      .optional(),
     slug: z
       .string()
       .min(1, 'Slug is required')

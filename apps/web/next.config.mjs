@@ -3,7 +3,7 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   transpilePackages: ['@acme/ui'],
-   images: {
+  images: {
     remotePatterns: [
       {
         protocol: 'https',

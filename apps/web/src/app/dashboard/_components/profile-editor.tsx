@@ -14,6 +14,7 @@ import {
   Settings,
   Trash2,
   RefreshCw,
+  Edit3,
 } from 'lucide-react';
 
 import {
@@ -68,12 +69,19 @@ import {
   reorderLinksAction,
   updateLinkAction,
   updateProfileAction,
+  createBlockAction,
+  updateBlockAction,
+  deleteBlockAction,
+  reorderBlocksAction,
+  getBlocksForLink,
 } from '../actions';
+import type { Block } from '@/types/blocks';
 
 import { IconPicker } from './icon-picker';
 import { LinksDndList } from './links-dnd-list';
 import { CustomScriptsEditor } from './custom-scripts-editor';
 import { ShortLinkManager } from './short-link-manager';
+import { BlockEditor } from './block-editor';
 
 export type EditorProfile = {
   id: string;
@@ -93,7 +101,7 @@ export type EditorLink = {
   slug: string;
   title: string;
   url: string;
-  linkType: 'URL' | 'COPY_FIELD';
+  linkType: 'URL' | 'COPY_FIELD' | 'BLOCK';
   position: number;
   status: 'ACTIVE' | 'HIDDEN' | 'ARCHIVED';
   metadata: Prisma.JsonValue;
@@ -179,6 +187,13 @@ export function ProfileEditor({
   const [newLinkUrlTouched, setNewLinkUrlTouched] = useState(false);
   const [newLinkType, setNewLinkType] = useState<'URL' | 'COPY_FIELD'>('URL');
   const [addingLink, setAddingLink] = useState(false);
+
+  // Block-based link state
+  const [linkMode, setLinkMode] = useState<'simple' | 'blocks'>('simple');
+  const [newBlockLinkTitle, setNewBlockLinkTitle] = useState('');
+  const [blockEditorOpen, setBlockEditorOpen] = useState(false);
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  const [blockEditorBlocks, setBlockEditorBlocks] = useState<Block[]>([]);
 
   const titleInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -530,6 +545,124 @@ export function ProfileEditor({
     setDuplicateError(null);
   }, [duplicateOpen, profileState.displayName, profileState.slug]);
 
+  // Block-based link handlers
+  async function handleCreateBlockLink() {
+    const title = newBlockLinkTitle.trim();
+    if (!title) return;
+
+    setAddingLink(true);
+    try {
+      const result = await createLinkAction({
+        profileId: profile.id,
+        title,
+        url: `/${title.toLowerCase().replace(/\s+/g, '-')}`, // placeholder URL
+        linkType: 'BLOCK',
+      });
+
+      if (!result.ok) {
+        toast({
+          title: 'Could not create block-based link',
+          description: result.error,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setLinksState((prev) => [...prev, result.link]);
+      setNewBlockLinkTitle('');
+
+      // Open the block editor for the new link
+      setTimeout(() => {
+        openBlockEditor(result.link.id);
+      }, 100);
+
+      toast({
+        title: 'Block-based link created',
+        description: 'Start adding blocks to build your content',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error creating link',
+        description: 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAddingLink(false);
+    }
+  }
+
+  async function openBlockEditor(linkId: string) {
+    setEditingLinkId(linkId);
+
+    try {
+      const result = await getBlocksForLink(linkId);
+      if (result.ok) {
+        setBlockEditorBlocks(result.blocks);
+      } else {
+        setBlockEditorBlocks([]);
+        toast({
+          title: 'Error loading blocks',
+          description: result.error,
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      setBlockEditorBlocks([]);
+      toast({
+        title: 'Error loading blocks',
+        description: 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    }
+
+    setBlockEditorOpen(true);
+  }
+
+  function closeBlockEditor() {
+    setBlockEditorOpen(false);
+    setEditingLinkId(null);
+    setBlockEditorBlocks([]);
+  }
+
+  async function handleBlockEditorSave(blocks: Block[]) {
+    if (!editingLinkId) return;
+
+    try {
+      // Save each block
+      for (const block of blocks) {
+        if (block.id.startsWith('temp-')) {
+          // Create new block
+          await createBlockAction({
+            linkId: editingLinkId,
+            type: block.type,
+            order: block.order,
+            content: block.content,
+          });
+        } else {
+          // Update existing block
+          await updateBlockAction(block.id, {
+            order: block.order,
+            content: block.content,
+          });
+        }
+      }
+
+      toast({
+        title: 'Blocks saved',
+        description: 'Your block changes have been saved',
+      });
+
+      closeBlockEditor();
+      router.refresh();
+    } catch (error) {
+      toast({
+        title: 'Error saving blocks',
+        description: 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {/* Dialog: actions */}
@@ -746,264 +879,388 @@ export function ProfileEditor({
 
           {/* Links Tab */}
           <TabsContent value="links" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Link2 className="h-5 w-5" />
-                  Manage Links & Copy Fields
-                </CardTitle>
-                <CardDescription>Add regular links, copy fields, edit, and reorder</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-                  <div className="space-y-1">
-                    <Label htmlFor="newTitle">Title</Label>
-                    <Input
-                      ref={titleInputRef}
-                      id="newTitle"
-                      value={newLinkTitle}
-                      onChange={(e) => setNewLinkTitle(e.target.value)}
-                      placeholder={newLinkType === 'COPY_FIELD' ? 'Bitcoin Wallet' : 'Instagram'}
-                    />
-                  </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Link Management</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Create and manage your links with the new block-based editor
+                </p>
+              </div>
 
-                  <div className="space-y-1">
-                    <Label htmlFor="newUrl">
-                      {newLinkType === 'COPY_FIELD' ? 'Text to Copy' : 'URL'}
-                    </Label>
-                    <div className="relative">
+              {/* Link Type Toggle */}
+              <div className="flex items-center gap-2 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+                <Button
+                  type="button"
+                  variant={linkMode === 'simple' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setLinkMode('simple')}
+                  className="h-8"
+                >
+                  Simple
+                </Button>
+                <Button
+                  type="button"
+                  variant={linkMode === 'blocks' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setLinkMode('blocks')}
+                  className="h-8"
+                >
+                  Blocks
+                </Button>
+              </div>
+            </div>
+
+            {linkMode === 'simple' ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Link2 className="h-5 w-5" />
+                    Manage Simple Links & Copy Fields
+                  </CardTitle>
+                  <CardDescription>
+                    Add regular links, copy fields, edit, and reorder
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                    <div className="space-y-1">
+                      <Label htmlFor="newTitle">Title</Label>
                       <Input
-                        id="newUrl"
-                        value={newLinkUrl}
-                        onChange={(e) => setNewLinkUrl(e.target.value)}
-                        onBlur={() => setNewLinkUrlTouched(true)}
-                        placeholder={
-                          newLinkType === 'COPY_FIELD'
-                            ? 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
-                            : 'https://instagram.com/yourname'
-                        }
-                        className={cn(newLinkUrlTouched && !newUrlValid && 'border-destructive')}
+                        ref={titleInputRef}
+                        id="newTitle"
+                        value={newLinkTitle}
+                        onChange={(e) => setNewLinkTitle(e.target.value)}
+                        placeholder={newLinkType === 'COPY_FIELD' ? 'Bitcoin Wallet' : 'Instagram'}
                       />
-                      {newLinkUrl.trim() && newUrlValid ? (
-                        <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-600 dark:text-green-400" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="newUrl">
+                        {newLinkType === 'COPY_FIELD' ? 'Text to Copy' : 'URL'}
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="newUrl"
+                          value={newLinkUrl}
+                          onChange={(e) => setNewLinkUrl(e.target.value)}
+                          onBlur={() => setNewLinkUrlTouched(true)}
+                          placeholder={
+                            newLinkType === 'COPY_FIELD'
+                              ? 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
+                              : 'https://instagram.com/yourname'
+                          }
+                          className={cn(newLinkUrlTouched && !newUrlValid && 'border-destructive')}
+                        />
+                        {newLinkUrl.trim() && newUrlValid ? (
+                          <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-600 dark:text-green-400" />
+                        ) : null}
+                      </div>
+                      {newLinkUrlTouched && newLinkUrl.trim() && !newUrlValid ? (
+                        <p className="text-destructive text-xs">
+                          {newLinkType === 'COPY_FIELD'
+                            ? 'Please enter text to copy'
+                            : 'Please enter a valid URL (e.g., https://instagram.com/yourname)'}
+                        </p>
                       ) : null}
                     </div>
-                    {newLinkUrlTouched && newLinkUrl.trim() && !newUrlValid ? (
-                      <p className="text-destructive text-xs">
-                        {newLinkType === 'COPY_FIELD'
-                          ? 'Please enter text to copy'
-                          : 'Please enter a valid URL (e.g., https://instagram.com/yourname)'}
-                      </p>
-                    ) : null}
-                  </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant={newLinkType === 'URL' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setNewLinkType('URL')}
-                      className="whitespace-nowrap"
-                    >
-                      <Link2 className="mr-1.5 h-3.5 w-3.5" />
-                      Link
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={newLinkType === 'COPY_FIELD' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        setNewLinkType('COPY_FIELD');
-                        setNewLinkUrl('');
-                        setNewLinkUrlTouched(false);
-                      }}
-                      className="whitespace-nowrap"
-                    >
-                      <Copy className="mr-1.5 h-3.5 w-3.5" />
-                      Copy
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    onClick={() => void handleCreateLink()}
-                    disabled={
-                      !newLinkTitle.trim() || !newLinkUrl.trim() || !newUrlValid || addingLink
-                    }
-                  >
-                    {addingLink ? (
-                      <span className="flex items-center gap-2">
-                        <Spinner className="text-current" /> Adding…
-                      </span>
-                    ) : newLinkType === 'COPY_FIELD' ? (
-                      'Add Copy Field'
-                    ) : (
-                      'Add Link'
-                    )}
-                  </Button>
-                </div>
-
-                {linksState.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-                    <div className="bg-primary/10 mb-4 rounded-full p-3">
-                      <LinkIcon className="text-primary h-8 w-8" />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={newLinkType === 'URL' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setNewLinkType('URL')}
+                        className="whitespace-nowrap"
+                      >
+                        <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                        Link
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={newLinkType === 'COPY_FIELD' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => {
+                          setNewLinkType('COPY_FIELD');
+                          setNewLinkUrl('');
+                          setNewLinkUrlTouched(false);
+                        }}
+                        className="whitespace-nowrap"
+                      >
+                        <Copy className="mr-1.5 h-3.5 w-3.5" />
+                        Copy
+                      </Button>
                     </div>
-                    <h3 className="text-lg font-semibold">No links yet</h3>
-                    <p className="text-muted-foreground mt-2 max-w-xs text-sm">
-                      Start building your Linkforest by adding your first link
-                    </p>
+                  </div>
+
+                  <div className="flex justify-end">
                     <Button
                       type="button"
-                      size="lg"
-                      className="mt-6"
-                      onClick={() => titleInputRef.current?.focus()}
+                      onClick={() => void handleCreateLink()}
+                      disabled={
+                        !newLinkTitle.trim() || !newLinkUrl.trim() || !newUrlValid || addingLink
+                      }
                     >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Your First Link
+                      {addingLink ? (
+                        <span className="flex items-center gap-2">
+                          <Spinner className="text-current" /> Adding…
+                        </span>
+                      ) : newLinkType === 'COPY_FIELD' ? (
+                        'Add Copy Field'
+                      ) : (
+                        'Add Link'
+                      )}
                     </Button>
                   </div>
-                ) : (
-                  <LinksDndList
-                    links={linksState}
-                    onLinksChange={setLinksState}
-                    onReorder={(orderedIds) => handleReorder(orderedIds)}
-                    renderLink={(link, { dragHandle, isDragging }) => {
-                      const md = getLinkMetadata(link);
 
-                      return (
-                        <div
-                          className={cn(
-                            'border-border bg-card rounded-xl border p-4 shadow-sm sm:p-5',
-                            isDragging && 'ring-ring ring-2',
-                          )}
-                        >
-                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-                            <div className="pt-0.5">{dragHandle}</div>
+                  {linksState.filter((l) => l.linkType !== 'BLOCK').length === 0 ? (
+                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+                      <div className="bg-primary/10 mb-4 rounded-full p-3">
+                        <LinkIcon className="text-primary h-8 w-8" />
+                      </div>
+                      <h3 className="text-lg font-semibold">No links yet</h3>
+                      <p className="text-muted-foreground mt-2 max-w-xs text-sm">
+                        Start building your Linkforest by adding your first link
+                      </p>
+                      <Button
+                        type="button"
+                        size="lg"
+                        className="mt-6"
+                        onClick={() => titleInputRef.current?.focus()}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Your First Link
+                      </Button>
+                    </div>
+                  ) : (
+                    <LinksDndList
+                      links={linksState.filter((l) => l.linkType !== 'BLOCK')}
+                      onLinksChange={(updated) => {
+                        const blockLinks = linksState.filter((l) => l.linkType === 'BLOCK');
+                        setLinksState([...updated, ...blockLinks]);
+                      }}
+                      onReorder={(orderedIds) => {
+                        const nonBlockIds = orderedIds;
+                        const blockLinks = linksState.filter((l) => l.linkType === 'BLOCK');
+                        const allOrderedIds = [...nonBlockIds, ...blockLinks.map((l) => l.id)];
+                        handleReorder(allOrderedIds);
+                      }}
+                      renderLink={(link, { dragHandle, isDragging }) => {
+                        const md = getLinkMetadata(link);
 
-                            <div className="grid flex-1 gap-4">
-                              <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="space-y-1">
-                                  <Label htmlFor={`title-${link.id}`}>Title</Label>
-                                  <Input
-                                    id={`title-${link.id}`}
-                                    value={link.title}
-                                    onChange={(e) =>
-                                      setLinksState((prev) =>
-                                        prev.map((l) =>
-                                          l.id === link.id ? { ...l, title: e.target.value } : l,
-                                        ),
-                                      )
-                                    }
-                                    onBlur={() => handleUpdateLink(link.id, { title: link.title })}
-                                  />
+                        return (
+                          <div
+                            className={cn(
+                              'border-border bg-card rounded-xl border p-4 shadow-sm sm:p-5',
+                              isDragging && 'ring-ring ring-2',
+                            )}
+                          >
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                              <div className="pt-0.5">{dragHandle}</div>
+
+                              <div className="grid flex-1 gap-4">
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                  <div className="space-y-1">
+                                    <Label htmlFor={`title-${link.id}`}>Title</Label>
+                                    <Input
+                                      id={`title-${link.id}`}
+                                      value={link.title}
+                                      onChange={(e) =>
+                                        setLinksState((prev) =>
+                                          prev.map((l) =>
+                                            l.id === link.id ? { ...l, title: e.target.value } : l,
+                                          ),
+                                        )
+                                      }
+                                      onBlur={() =>
+                                        handleUpdateLink(link.id, { title: link.title })
+                                      }
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label htmlFor={`url-${link.id}`}>
+                                      {link.linkType === 'COPY_FIELD' ? 'Text to Copy' : 'URL'}
+                                    </Label>
+                                    <Input
+                                      id={`url-${link.id}`}
+                                      value={link.url}
+                                      onChange={(e) =>
+                                        setLinksState((prev) =>
+                                          prev.map((l) =>
+                                            l.id === link.id ? { ...l, url: e.target.value } : l,
+                                          ),
+                                        )
+                                      }
+                                      onBlur={() => handleUpdateLink(link.id, { url: link.url })}
+                                      placeholder={
+                                        link.linkType === 'COPY_FIELD'
+                                          ? 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
+                                          : 'https://instagram.com/yourname'
+                                      }
+                                    />
+                                  </div>
                                 </div>
-                                <div className="space-y-1">
-                                  <Label htmlFor={`url-${link.id}`}>
-                                    {link.linkType === 'COPY_FIELD' ? 'Text to Copy' : 'URL'}
-                                  </Label>
-                                  <Input
-                                    id={`url-${link.id}`}
-                                    value={link.url}
-                                    onChange={(e) =>
-                                      setLinksState((prev) =>
-                                        prev.map((l) =>
-                                          l.id === link.id ? { ...l, url: e.target.value } : l,
-                                        ),
-                                      )
-                                    }
-                                    onBlur={() => handleUpdateLink(link.id, { url: link.url })}
-                                    placeholder={
-                                      link.linkType === 'COPY_FIELD'
-                                        ? 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
-                                        : 'https://instagram.com/yourname'
-                                    }
+
+                                <div className="grid gap-4 sm:grid-cols-3">
+                                  <div className="space-y-1">
+                                    <Label htmlFor={`linkType-${link.id}`}>Type</Label>
+                                    <select
+                                      id={`linkType-${link.id}`}
+                                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                                      value={link.linkType}
+                                      onChange={(e) => {
+                                        const newType = e.target.value as 'URL' | 'COPY_FIELD';
+                                        setLinksState((prev) =>
+                                          prev.map((l) =>
+                                            l.id === link.id ? { ...l, linkType: newType } : l,
+                                          ),
+                                        );
+                                        handleUpdateLink(link.id, { linkType: newType });
+                                      }}
+                                    >
+                                      <option value="URL">Link</option>
+                                      <option value="COPY_FIELD">Copy Field</option>
+                                    </select>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label htmlFor={`status-${link.id}`}>Status</Label>
+                                    <select
+                                      id={`status-${link.id}`}
+                                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                                      value={link.status}
+                                      onChange={(e) => {
+                                        const newStatus = e.target.value as
+                                          | 'ACTIVE'
+                                          | 'HIDDEN'
+                                          | 'ARCHIVED';
+                                        setLinksState((prev) =>
+                                          prev.map((l) =>
+                                            l.id === link.id ? { ...l, status: newStatus } : l,
+                                          ),
+                                        );
+                                        handleUpdateLink(link.id, { status: newStatus });
+                                      }}
+                                    >
+                                      <option value="ACTIVE">Active</option>
+                                      <option value="HIDDEN">Hidden</option>
+                                      <option value="ARCHIVED">Archived</option>
+                                    </select>
+                                  </div>
+                                  <IconPicker
+                                    id={`icon-${link.id}`}
+                                    value={typeof md.icon === 'string' ? md.icon : undefined}
+                                    onChange={(value) => {
+                                      const next: Prisma.JsonObject = { ...md };
+                                      if (value) {
+                                        next.icon = value;
+                                      } else {
+                                        delete next.icon;
+                                      }
+                                      handleUpdateLink(link.id, { metadata: next });
+                                    }}
                                   />
                                 </div>
                               </div>
 
-                              <div className="grid gap-4 sm:grid-cols-3">
-                                <div className="space-y-1">
-                                  <Label htmlFor={`linkType-${link.id}`}>Type</Label>
-                                  <select
-                                    id={`linkType-${link.id}`}
-                                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                                    value={link.linkType}
-                                    onChange={(e) => {
-                                      const newType = e.target.value as 'URL' | 'COPY_FIELD';
-                                      setLinksState((prev) =>
-                                        prev.map((l) =>
-                                          l.id === link.id ? { ...l, linkType: newType } : l,
-                                        ),
-                                      );
-                                      handleUpdateLink(link.id, { linkType: newType });
-                                    }}
-                                  >
-                                    <option value="URL">Link</option>
-                                    <option value="COPY_FIELD">Copy Field</option>
-                                  </select>
-                                </div>
-                                <div className="space-y-1">
-                                  <Label htmlFor={`status-${link.id}`}>Status</Label>
-                                  <select
-                                    id={`status-${link.id}`}
-                                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                                    value={link.status}
-                                    onChange={(e) => {
-                                      const newStatus = e.target.value as
-                                        | 'ACTIVE'
-                                        | 'HIDDEN'
-                                        | 'ARCHIVED';
-                                      setLinksState((prev) =>
-                                        prev.map((l) =>
-                                          l.id === link.id ? { ...l, status: newStatus } : l,
-                                        ),
-                                      );
-                                      handleUpdateLink(link.id, { status: newStatus });
-                                    }}
-                                  >
-                                    <option value="ACTIVE">Active</option>
-                                    <option value="HIDDEN">Hidden</option>
-                                    <option value="ARCHIVED">Archived</option>
-                                  </select>
-                                </div>
-                                <IconPicker
-                                  id={`icon-${link.id}`}
-                                  value={typeof md.icon === 'string' ? md.icon : undefined}
-                                  onChange={(value) => {
-                                    const next: Prisma.JsonObject = { ...md };
-                                    if (value) {
-                                      next.icon = value;
-                                    } else {
-                                      delete next.icon;
-                                    }
-                                    handleUpdateLink(link.id, { metadata: next });
-                                  }}
-                                />
+                              <div className="flex justify-end lg:pt-0.5">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleArchiveLink(link.id)}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <span className="sr-only">Delete</span>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
-                            </div>
-
-                            <div className="flex justify-end lg:pt-0.5">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleArchiveLink(link.id)}
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <span className="sr-only">Delete</span>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
                             </div>
                           </div>
+                        );
+                      }}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Block-Based Links
+                  </CardTitle>
+                  <CardDescription>
+                    Create rich, interactive links with customizable blocks. Perfect for landing
+                    pages, product showcases, and detailed descriptions.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* Block-based link management */}
+                  <div className="space-y-4">
+                    {/* Create new block-based link */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="New block-based link title"
+                        value={newBlockLinkTitle}
+                        onChange={(e) => setNewBlockLinkTitle(e.target.value)}
+                      />
+                      <Button onClick={handleCreateBlockLink} disabled={!newBlockLinkTitle.trim()}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Block Link
+                      </Button>
+                    </div>
+
+                    {/* Block-based links list */}
+                    <div className="space-y-2">
+                      {linksState.filter((l) => l.linkType === 'BLOCK').length === 0 ? (
+                        <div className="py-8 text-center text-gray-500">
+                          <FileText className="mx-auto mb-2 h-8 w-8 opacity-50" />
+                          <p className="text-sm">No block-based links yet</p>
+                          <p className="text-xs">
+                            Create your first block-based link to get started
+                          </p>
                         </div>
-                      );
-                    }}
-                  />
-                )}
-              </CardContent>
-            </Card>
+                      ) : (
+                        linksState
+                          .filter((l) => l.linkType === 'BLOCK')
+                          .map((link) => (
+                            <div
+                              key={link.id}
+                              className="rounded-lg border p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="font-medium">{link.title}</h4>
+                                  <p className="text-sm text-gray-500">
+                                    Block-based link • {link.status}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openBlockEditor(link.id)}
+                                  >
+                                    <Edit3 className="mr-2 h-4 w-4" />
+                                    Edit Blocks
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleArchiveLink(link.id)}
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Pages Tab */}
@@ -1177,6 +1434,40 @@ export function ProfileEditor({
           />
         </div>
       </div>
+
+      {/* Block Editor Modal */}
+      <Dialog open={blockEditorOpen} onOpenChange={(open) => !open && closeBlockEditor()}>
+        <DialogContent className="h-[90vh] max-w-[1400px] p-0">
+          <div className="flex h-full flex-col">
+            <DialogHeader className="border-b px-6 py-4">
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Block Editor
+              </DialogTitle>
+              <DialogDescription>
+                Create and customize blocks for your link. Click on blocks in the list to edit them.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex-1 overflow-hidden">
+              {editingLinkId && (
+                <BlockEditor
+                  blocks={blockEditorBlocks}
+                  onBlocksChange={setBlockEditorBlocks}
+                  className="h-full"
+                />
+              )}
+            </div>
+
+            <DialogFooter className="gap-2 border-t px-6 py-4">
+              <Button variant="outline" onClick={closeBlockEditor}>
+                Cancel
+              </Button>
+              <Button onClick={() => handleBlockEditorSave(blockEditorBlocks)}>Save Blocks</Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
