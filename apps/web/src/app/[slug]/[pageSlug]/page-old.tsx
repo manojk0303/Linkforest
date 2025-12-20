@@ -2,10 +2,12 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
 import { prisma } from '@/lib/prisma';
 import { normalizeThemeSettings } from '@/lib/theme-settings';
 import { PageViewTracker } from '@/components/page-view-tracker';
-import { BlockRenderer } from '@/components/block-renderer';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +51,11 @@ export async function generateMetadata({
   };
 }
 
-export default async function PagePage({ params }: { params: { slug: string; pageSlug: string } }) {
+export default async function MarkdownPage({
+  params,
+}: {
+  params: { slug: string; pageSlug: string };
+}) {
   const page = await prisma.page.findFirst({
     where: {
       slug: params.pageSlug,
@@ -69,9 +75,6 @@ export default async function PagePage({ params }: { params: { slug: string; pag
           image: true,
           themeSettings: true,
         },
-      },
-      blocks: {
-        orderBy: { order: 'asc' },
       },
     },
   });
@@ -106,39 +109,56 @@ export default async function PagePage({ params }: { params: { slug: string; pag
 
       {/* Page content */}
       <main className="container mx-auto max-w-4xl px-4 py-12">
-        <div className="mb-8">
-          <h1 className="mb-2 text-4xl font-bold" style={{ color: theme.textColor }}>
-            {page.icon && <span className="mr-3">{page.icon}</span>}
-            {page.title}
-          </h1>
-        </div>
-
-        {/* Render blocks */}
-        <div className="space-y-6">
-          {page.blocks.length === 0 ? (
-            <div className="py-12 text-center">
-              <p className="mb-4 text-xl" style={{ color: theme.textColor }}>
-                This page is currently empty
-              </p>
-              <p style={{ color: theme.textColor, opacity: 0.7 }}>
-                No content has been added to this page yet.
-              </p>
-            </div>
-          ) : (
-            page.blocks.map((block) => (
-              <BlockRenderer
-                key={block.id}
-                block={{
-                  ...block,
-                  content: block.content as any, // Type assertion for compatibility
-                  createdAt: block.createdAt.toISOString(),
-                  updatedAt: block.updatedAt.toISOString(),
-                  type: block.type as any, // Type assertion for compatibility
-                }}
-              />
-            ))
-          )}
-        </div>
+        <article className="prose prose-lg prose-invert max-w-none">
+          <h1 style={{ color: theme.textColor }}>{page.title}</h1>
+          <div
+            className="prose-content"
+            style={
+              {
+                color: theme.textColor,
+                '--tw-prose-body': theme.textColor,
+                '--tw-prose-headings': theme.textColor,
+                '--tw-prose-lead': theme.textColor,
+                '--tw-prose-links': theme.buttonColor,
+                '--tw-prose-bold': theme.textColor,
+                '--tw-prose-counters': theme.textColor,
+                '--tw-prose-bullets': theme.textColor,
+                '--tw-prose-hr': theme.textColor + '40',
+                '--tw-prose-quotes': theme.textColor,
+                '--tw-prose-quote-borders': theme.textColor + '40',
+                '--tw-prose-captions': theme.textColor,
+                '--tw-prose-code': theme.textColor,
+                '--tw-prose-pre-code': '#ffffff',
+                '--tw-prose-pre-bg': '#1f2937',
+                '--tw-prose-th-borders': theme.textColor + '40',
+                '--tw-prose-td-borders': theme.textColor + '20',
+              } as React.CSSProperties
+            }
+          >
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                // Custom styling for links
+                a: ({ node, ...props }) => (
+                  <a
+                    {...props}
+                    className="underline transition-opacity hover:opacity-80"
+                    style={{ color: theme.buttonColor }}
+                  />
+                ),
+                // Custom styling for code blocks
+                code: ({ node, ...props }) => (
+                  <code {...props} className="rounded bg-white/10 px-1 py-0.5 text-sm" />
+                ),
+                pre: ({ node, ...props }) => (
+                  <pre {...props} className="overflow-x-auto rounded-lg bg-gray-800 p-4" />
+                ),
+              }}
+            >
+              {page.content}
+            </ReactMarkdown>
+          </div>
+        </article>
       </main>
 
       {/* Track page view */}

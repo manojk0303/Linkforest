@@ -1,5 +1,7 @@
 import { BlockType, type Block, type BlockContent } from '@/types/blocks';
 
+export { BlockType };
+
 export const BLOCK_TYPE_CONFIG = {
   [BlockType.MARKDOWN]: {
     name: 'Markdown',

@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation';
 interface DateRangeSelectorProps {
   currentRange: string;
   profileId: string;
+  tab?: string;
 }
 
-export function DateRangeSelector({ currentRange, profileId }: DateRangeSelectorProps) {
+export function DateRangeSelector({ currentRange, profileId, tab }: DateRangeSelectorProps) {
   const router = useRouter();
 
   const ranges = [
@@ -26,7 +27,9 @@ export function DateRangeSelector({ currentRange, profileId }: DateRangeSelector
           variant={currentRange === range.value ? 'default' : 'outline'}
           size="sm"
           onClick={() =>
-            router.push(`/dashboard/analytics?profile=${profileId}&range=${range.value}`)
+            router.push(
+              `/dashboard/analytics?profile=${profileId}&range=${range.value}&tab=${tab || 'links'}`,
+            )
           }
         >
           {range.label}

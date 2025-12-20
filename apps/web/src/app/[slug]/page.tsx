@@ -78,15 +78,17 @@ export default async function PublicProfilePage({ params }: { params: { slug: st
           image: profile.image,
           themeSettings: theme,
         }}
-        links={profile.links.map((l) => ({
-          id: l.id,
-          title: l.title,
-          url: l.url,
-          linkType: l.linkType,
-          status: l.status,
-          deletedAt: l.deletedAt,
-          metadata: l.metadata,
-        }))}
+        links={profile.links
+          .filter((l) => l.linkType !== 'BLOCK')
+          .map((l) => ({
+            id: l.id,
+            title: l.title,
+            url: l.url,
+            linkType: l.linkType as 'URL' | 'COPY_FIELD',
+            status: l.status,
+            deletedAt: l.deletedAt,
+            metadata: l.metadata,
+          }))}
         showQr
         pages={profile.pages.map((p) => ({
           id: p.id,

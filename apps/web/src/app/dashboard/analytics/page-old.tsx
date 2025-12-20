@@ -22,10 +22,9 @@ import { DeviceBreakdown } from './_components/device-breakdown';
 import { ReferrerSources } from './_components/referrer-sources';
 import { DateRangeSelector } from './_components/date-range-selector';
 import { AnalyticsProfileSwitcher } from './_components/profile-switcher';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@acme/ui';
 
 interface AnalyticsPageProps {
-  searchParams: { range?: string; profile?: string; tab?: string };
+  searchParams: { range?: string; profile?: string };
 }
 
 export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
@@ -37,7 +36,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
 
   const range = searchParams.range || '7';
   const daysAgo = parseInt(range);
-  const activeTab = searchParams.tab || 'links';
 
   const profiles = await prisma.profile.findMany({
     where: { userId: user.id, deletedAt: null },
@@ -91,8 +89,16 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     return `Last ${daysAgo} days`;
   })();
 
-  // Links analytics data
-  const [totalClicks, analytics, topLinks, countries, devices, referrers] = await Promise.all([
+  const [
+    totalClicks,
+    analytics,
+    topLinks,
+    topPages,
+    countries,
+    devices,
+    referrers,
+    totalPageViews,
+  ] = await Promise.all([
     prisma.analytics.count({
       where: {
         link: { profileId: selectedProfileId },
@@ -114,6 +120,16 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       where: {
         link: { profileId: selectedProfileId },
         clickedAt: { gte: startDate },
+      },
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 5,
+    }),
+    prisma.pageAnalytics.groupBy({
+      by: ['pageId'],
+      where: {
+        page: { profileId: selectedProfileId },
+        viewedAt: { gte: startDate },
       },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
@@ -149,6 +165,12 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       orderBy: { _count: { id: 'desc' } },
       take: 10,
     }),
+    prisma.pageAnalytics.count({
+      where: {
+        page: { profileId: selectedProfileId },
+        viewedAt: { gte: startDate },
+      },
+    }),
   ]);
 
   const linkIds = topLinks.map((l) => l.linkId);
@@ -167,26 +189,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     };
   });
 
-  // Pages analytics data
-  const [totalPageViews, topPages] = await Promise.all([
-    prisma.pageAnalytics.count({
-      where: {
-        page: { profileId: selectedProfileId },
-        viewedAt: { gte: startDate },
-      },
-    }),
-    prisma.pageAnalytics.groupBy({
-      by: ['pageId'],
-      where: {
-        page: { profileId: selectedProfileId },
-        viewedAt: { gte: startDate },
-      },
-      _count: { id: true },
-      orderBy: { _count: { id: 'desc' } },
-      take: 5,
-    }),
-  ]);
-
   const pageIds = topPages.map((p) => p.pageId);
   const pages = await prisma.page.findMany({
     where: { id: { in: pageIds } },
@@ -204,7 +206,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     };
   });
 
-  // Short links analytics data (PRO only)
   let totalShortLinkClicks = 0;
   let shortLinkClicks: Array<{ clickedAt: Date }> = [];
   let topShortLinksData: Array<{
@@ -329,7 +330,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
             },
             {
               label: 'Analytics',
-              href: `/dashboard/analytics?profile=${selectedProfileId}&range=${range}&tab=${activeTab}`,
+              href: `/dashboard/analytics?profile=${selectedProfileId}&range=${range}`,
             },
           ]}
         />
@@ -361,16 +362,11 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
                 profiles={profiles}
                 selectedProfileId={selectedProfileId}
                 range={range}
-                tab={activeTab}
               />
             ) : null}
 
             <div className="flex flex-wrap gap-2">
-              <DateRangeSelector
-                currentRange={range}
-                profileId={selectedProfileId}
-                tab={activeTab}
-              />
+              <DateRangeSelector currentRange={range} profileId={selectedProfileId} />
               <Button variant="outline" asChild>
                 <a href={`/dashboard/analytics/export?profile=${selectedProfileId}&range=${range}`}>
                   Export CSV
@@ -402,6 +398,28 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           </Card>
         ) : null}
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Link Clicks</CardTitle>
+            <CardDescription>{totalClicksDescription}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold">{totalClicks.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+
+        {subscriptionTier === 'PRO' ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Total Short Link Clicks</CardTitle>
+              <CardDescription>{totalClicksDescription}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold">{totalShortLinkClicks.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+        ) : null}
+
         {!hasAnyAnalytics ? (
           <Card>
             <CardHeader>
@@ -420,79 +438,40 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           </Card>
         ) : null}
 
-        {/* Tabs for Links vs Pages */}
-        <Tabs defaultValue={activeTab} className="w-full">
-          <div className="border-b px-0">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="links" className="flex items-center gap-2">
-                Links Analytics
-              </TabsTrigger>
-              <TabsTrigger value="pages" className="flex items-center gap-2">
-                Pages Analytics
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        <AnalyticsCharts
+          analytics={analytics}
+          range={daysAgo}
+          retentionDays={retentionDays}
+          title="Link Click Trends"
+          description="Daily link click activity over the selected period"
+        />
 
-          <TabsContent value="links" className="mt-6 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Link Clicks</CardTitle>
-                <CardDescription>{totalClicksDescription}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold">{totalClicks.toLocaleString()}</div>
-              </CardContent>
-            </Card>
+        <div className="grid gap-6 md:grid-cols-2">
+          <TopLinks links={topLinksData} />
+          <TopPages pages={topPagesData} />
+        </div>
 
-            <AnalyticsCharts
-              analytics={analytics}
-              range={daysAgo}
-              retentionDays={retentionDays}
-              title="Link Click Trends"
-              description="Daily link click activity over the selected period"
-            />
+        <div className="grid gap-6 md:grid-cols-2">
+          <GeographicBreakdown
+            countries={countries}
+            title="Link Geographic Breakdown"
+            description="Link clicks by country"
+          />
+        </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <TopLinks links={topLinksData} />
-              <GeographicBreakdown
-                countries={countries}
-                title="Link Geographic Breakdown"
-                description="Link clicks by country"
-              />
-            </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <DeviceBreakdown
+            devices={devices}
+            title="Link Device Breakdown"
+            description="Link clicks by device type"
+          />
+          <ReferrerSources
+            referrers={referrers}
+            title="Link Referrer Sources"
+            description="Where your link clicks are coming from"
+          />
+        </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <DeviceBreakdown
-                devices={devices}
-                title="Link Device Breakdown"
-                description="Link clicks by device type"
-              />
-              <ReferrerSources
-                referrers={referrers}
-                title="Link Referrer Sources"
-                description="Where your link clicks are coming from"
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="pages" className="mt-6 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Page Views</CardTitle>
-                <CardDescription>{totalClicksDescription}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold">{totalPageViews.toLocaleString()}</div>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <TopPages pages={topPagesData} />
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Short Links Analytics (PRO only) */}
         {subscriptionTier === 'PRO' ? (
           <div className="space-y-6">
             <div className="space-y-1">
@@ -501,16 +480,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
                 Clicks, devices, and referrers for your short links
               </p>
             </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Short Link Clicks</CardTitle>
-                <CardDescription>{totalClicksDescription}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold">{totalShortLinkClicks.toLocaleString()}</div>
-              </CardContent>
-            </Card>
 
             <AnalyticsCharts
               analytics={shortLinkClicks}

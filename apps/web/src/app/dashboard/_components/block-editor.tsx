@@ -26,11 +26,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@acme/ui';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@acme/ui';
 import { toast } from '@acme/ui';
-import { Separator } from '@acme/ui';
 
 import type { Block, BlockType, BlockContent } from '@/types/blocks';
 import {
-  BlockType,
   createDefaultBlockContent,
   validateBlockContent,
   BUTTON_COLORS,
@@ -38,6 +36,7 @@ import {
   reorderBlocks,
   getBlockTypeConfig,
 } from '@/lib/block-types';
+import { BlockType as BlockTypeEnum } from '@/lib/block-types';
 import { BlockRenderer, BlockListRenderer } from '@/components/block-renderer';
 
 // Block Editor Props
@@ -78,7 +77,7 @@ export function BlockEditor({ blocks, onBlocksChange, className }: BlockEditorPr
   const handleAddBlock = (type: BlockType) => {
     const newBlock: Block = {
       id: `temp-${Date.now()}`, // Temporary ID, will be replaced on server
-      linkId: '', // Will be set by parent component
+      pageId: '', // Will be set by parent component
       type,
       order: blocks.length,
       content: createDefaultBlockContent(type),
@@ -158,7 +157,7 @@ export function BlockEditor({ blocks, onBlocksChange, className }: BlockEditorPr
               <CardTitle className="text-sm">Add New Block</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {Object.values(BlockType).map((type) => {
+              {Object.values(BlockTypeEnum).map((type) => {
                 const config = getBlockTypeConfig(type);
                 const IconComponent =
                   {

@@ -46,13 +46,13 @@ export type BlockContent =
 
 export interface Block extends BaseBlock {
   content: BlockContent;
-  linkId: string;
+  pageId: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateBlockData {
-  linkId: string;
+  pageId: string;
   type: BlockType;
   order: number;
   content: BlockContent;

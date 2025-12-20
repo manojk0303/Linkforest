@@ -16,10 +16,12 @@ export function AnalyticsProfileSwitcher({
   profiles,
   selectedProfileId,
   range,
+  tab,
 }: {
   profiles: Array<{ id: string; slug: string; displayName: string | null }>;
   selectedProfileId: string;
   range: string;
+  tab?: string;
 }) {
   const router = useRouter();
 
@@ -34,7 +36,7 @@ export function AnalyticsProfileSwitcher({
             title: 'Switched profile',
             description: `Switched to ${p?.displayName || p?.slug}`,
           });
-          window.location.href = `/dashboard/analytics?profile=${id}&range=${range}`;
+          window.location.href = `/dashboard/analytics?profile=${id}&range=${range}&tab=${tab || 'links'}`;
         }}
       >
         <SelectTrigger className="h-10 min-w-[240px]">
