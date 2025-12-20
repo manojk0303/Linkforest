@@ -101,6 +101,15 @@ export type EditorLink = {
 
 export type EditorPage = PageType;
 
+export type EditorShortLink = {
+  id: string;
+  slug: string;
+  targetUrl: string;
+  title?: string | null;
+  isActive: boolean;
+  createdAt: string;
+};
+
 function isValidHttpUrl(value: string) {
   try {
     const url = new URL(value);
@@ -141,6 +150,7 @@ export function ProfileEditor({
   profile,
   links,
   pages = [],
+  shortLinks = [],
 }: {
   user: { id: string; email: string; name: string | null; subscriptionTier: 'FREE' | 'PRO' };
   profiles: Array<{
@@ -153,6 +163,7 @@ export function ProfileEditor({
   profile: EditorProfile;
   links: EditorLink[];
   pages?: EditorPage[];
+  shortLinks?: EditorShortLink[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -223,6 +234,19 @@ export function ProfileEditor({
         metadata: l.metadata,
       })),
     [linksState],
+  );
+
+  const previewPages = useMemo(
+    () =>
+      pages
+        .filter((p) => p.isPublished)
+        .map((p) => ({
+          id: p.id,
+          title: p.title,
+          slug: p.slug,
+          icon: p.icon,
+        })),
+    [pages],
   );
 
   function updateProfileDraft(patch: Partial<EditorProfile>) {
@@ -1094,7 +1118,7 @@ export function ProfileEditor({
               />
 
               {/* Short Link Manager */}
-              <ShortLinkManager user={user} initialShortLinks={[]} />
+              <ShortLinkManager user={user} profileId={profile.id} initialShortLinks={shortLinks} />
             </div>
 
             <Card>
@@ -1147,6 +1171,7 @@ export function ProfileEditor({
           <ProfilePreview
             profile={previewProfile}
             links={previewLinks}
+            pages={previewPages}
             showQr
             className="min-h-0"
           />

@@ -7,6 +7,8 @@ interface ReferrerData {
 
 interface ReferrerSourcesProps {
   referrers: ReferrerData[];
+  title?: string;
+  description?: string;
 }
 
 function formatReferrer(referrer: string | null): string {
@@ -31,14 +33,18 @@ function formatReferrer(referrer: string | null): string {
   }
 }
 
-export function ReferrerSources({ referrers }: ReferrerSourcesProps) {
+export function ReferrerSources({
+  referrers,
+  title = 'Referrer Sources',
+  description = 'Where your clicks are coming from',
+}: ReferrerSourcesProps) {
   const total = referrers.reduce((sum, r) => sum + r._count.id, 0);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Referrer Sources</CardTitle>
-        <CardDescription>Where your clicks are coming from</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         {referrers.length === 0 ? (

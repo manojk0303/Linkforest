@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { requireAuth } from '@/lib/auth-helpers';
 import { prisma } from '@/lib/prisma';
@@ -17,9 +17,12 @@ export default async function DesignPage({ params }: DesignPageProps) {
     where: { id: profileId, userId: user.id, deletedAt: null },
     include: {
       links: {
-        where: { deletedAt: null, status: { not: 'ARCHIVED' } },
+        where: { deletedAt: null, status: { in: ['ACTIVE', 'HIDDEN'] } },
         orderBy: { position: 'asc' },
-        take: 5,
+      },
+      pages: {
+        where: { isPublished: true },
+        orderBy: { order: 'asc' },
       },
     },
   });
@@ -56,6 +59,16 @@ export default async function DesignPage({ params }: DesignPageProps) {
           id: l.id,
           title: l.title,
           url: l.url,
+          linkType: l.linkType,
+          status: l.status,
+          deletedAt: l.deletedAt,
+          metadata: l.metadata,
+        }))}
+        pages={profile.pages.map((p) => ({
+          id: p.id,
+          title: p.title,
+          slug: p.slug,
+          icon: p.icon,
         }))}
       />
     </div>

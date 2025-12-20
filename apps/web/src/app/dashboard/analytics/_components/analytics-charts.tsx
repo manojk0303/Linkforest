@@ -15,9 +15,17 @@ interface AnalyticsChartsProps {
   analytics: Array<{ clickedAt: Date }> | null | undefined;
   range: number;
   retentionDays: number;
+  title?: string;
+  description?: string;
 }
 
-export function AnalyticsCharts({ analytics, range, retentionDays }: AnalyticsChartsProps) {
+export function AnalyticsCharts({
+  analytics,
+  range,
+  retentionDays,
+  title = 'Click Trends',
+  description = 'Daily click activity over the selected period',
+}: AnalyticsChartsProps) {
   const days = range === 0 ? retentionDays : Math.min(range, retentionDays);
   const chartData = [];
 
@@ -25,8 +33,8 @@ export function AnalyticsCharts({ analytics, range, retentionDays }: AnalyticsCh
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Click Trends</CardTitle>
-          <CardDescription>Daily click activity over the selected period</CardDescription>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-muted-foreground flex h-80 items-center justify-center">
@@ -53,8 +61,8 @@ export function AnalyticsCharts({ analytics, range, retentionDays }: AnalyticsCh
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Click Trends</CardTitle>
-        <CardDescription>Daily click activity over the selected period</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-80">

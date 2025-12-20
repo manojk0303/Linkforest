@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card,
@@ -11,7 +11,6 @@ import {
   Button,
   Input,
   Label,
-  Textarea,
   Badge,
   Dialog,
   DialogContent,
@@ -41,15 +40,19 @@ type ShortLinkManagerProps = {
     id: string;
     subscriptionTier: 'FREE' | 'PRO';
   };
+  profileId?: string;
   initialShortLinks: ShortLink[];
 };
 
-export function ShortLinkManager({ user, initialShortLinks }: ShortLinkManagerProps) {
+export function ShortLinkManager({ user, profileId, initialShortLinks }: ShortLinkManagerProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [shortLinks, setShortLinks] = useState<ShortLink[]>(initialShortLinks);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingLink, setEditingLink] = useState<ShortLink | null>(null);
+
+  useEffect(() => {
+    setShortLinks(initialShortLinks);
+  }, [initialShortLinks]);
 
   // Form state
   const [slug, setSlug] = useState('');
@@ -126,6 +129,7 @@ export function ShortLinkManager({ user, initialShortLinks }: ShortLinkManagerPr
             slug: slug.trim(),
             targetUrl: targetUrl.trim(),
             title: title.trim() || undefined,
+            profileId,
           });
 
       if (!result.ok) {

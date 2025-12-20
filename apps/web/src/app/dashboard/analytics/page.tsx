@@ -16,6 +16,7 @@ import { prisma } from '@/lib/prisma';
 import { AnalyticsCharts } from './_components/analytics-charts';
 import { TopLinks } from './_components/top-links';
 import { TopPages } from './_components/top-pages';
+import { TopShortLinks } from './_components/top-short-links';
 import { GeographicBreakdown } from './_components/geographic-breakdown';
 import { DeviceBreakdown } from './_components/device-breakdown';
 import { ReferrerSources } from './_components/referrer-sources';
@@ -88,7 +89,16 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     return `Last ${daysAgo} days`;
   })();
 
-  const [totalClicks, analytics, topLinks, topPages, countries, devices, referrers] = await Promise.all([
+  const [
+    totalClicks,
+    analytics,
+    topLinks,
+    topPages,
+    countries,
+    devices,
+    referrers,
+    totalPageViews,
+  ] = await Promise.all([
     prisma.analytics.count({
       where: {
         link: { profileId: selectedProfileId },
@@ -155,6 +165,12 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       orderBy: { _count: { id: 'desc' } },
       take: 10,
     }),
+    prisma.pageAnalytics.count({
+      where: {
+        page: { profileId: selectedProfileId },
+        viewedAt: { gte: startDate },
+      },
+    }),
   ]);
 
   const linkIds = topLinks.map((l) => l.linkId);
@@ -189,6 +205,118 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       views: tp._count.id,
     };
   });
+
+  let totalShortLinkClicks = 0;
+  let shortLinkClicks: Array<{ clickedAt: Date }> = [];
+  let topShortLinksData: Array<{
+    id: string;
+    slug: string;
+    title?: string | null;
+    targetUrl: string;
+    clicks: number;
+  }> = [];
+  let shortLinkCountries: Array<{ country: string | null; _count: { id: number } }> = [];
+  let shortLinkDevices: Array<{ deviceType: string; _count: { id: number } }> = [];
+  let shortLinkReferrers: Array<{ referrer: string | null; _count: { id: number } }> = [];
+
+  if (subscriptionTier === 'PRO') {
+    const shortLinkWhere = {
+      clickedAt: { gte: startDate },
+      shortLink: {
+        userId: user.id,
+        OR: [{ profileId: selectedProfileId }, { profileId: null }],
+      },
+    };
+
+    const [slTotal, slClicks, slTop, slCountries, slDevices, slReferrers] = await Promise.all([
+      prisma.shortLinkClick.count({
+        where: shortLinkWhere,
+      }),
+      prisma.shortLinkClick.findMany({
+        where: shortLinkWhere,
+        orderBy: { clickedAt: 'asc' },
+        select: { clickedAt: true },
+      }),
+      prisma.shortLinkClick.groupBy({
+        by: ['shortLinkId'],
+        where: shortLinkWhere,
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 5,
+      }),
+      prisma.shortLinkClick.groupBy({
+        by: ['country'],
+        where: {
+          ...shortLinkWhere,
+          country: { not: null },
+        },
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 10,
+      }),
+      prisma.shortLinkClick.groupBy({
+        by: ['deviceType'],
+        where: shortLinkWhere,
+        _count: { id: true },
+      }),
+      prisma.shortLinkClick.groupBy({
+        by: ['referrer'],
+        where: {
+          ...shortLinkWhere,
+          referrer: { not: null },
+        },
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 10,
+      }),
+    ]);
+
+    totalShortLinkClicks = slTotal;
+    shortLinkClicks = slClicks;
+    shortLinkCountries = slCountries;
+    shortLinkDevices = slDevices;
+    shortLinkReferrers = slReferrers;
+
+    const shortLinkIds = slTop.map((l) => l.shortLinkId);
+    const shortLinks = await prisma.shortLink.findMany({
+      where: {
+        id: { in: shortLinkIds },
+        userId: user.id,
+      },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        targetUrl: true,
+      },
+    });
+
+    topShortLinksData = slTop
+      .map((tl) => {
+        const shortLink = shortLinks.find((s) => s.id === tl.shortLinkId);
+        if (!shortLink) return null;
+        return {
+          id: tl.shortLinkId,
+          slug: shortLink.slug,
+          title: shortLink.title,
+          targetUrl: shortLink.targetUrl,
+          clicks: tl._count.id,
+        };
+      })
+      .filter(
+        (
+          value,
+        ): value is {
+          id: string;
+          slug: string;
+          title: string | null;
+          targetUrl: string;
+          clicks: number;
+        } => value !== null,
+      );
+  }
+
+  const hasAnyAnalytics = totalClicks > 0 || totalPageViews > 0 || totalShortLinkClicks > 0;
 
   return (
     <AnimatedPage>
@@ -272,7 +400,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
 
         <Card>
           <CardHeader>
-            <CardTitle>Total Clicks</CardTitle>
+            <CardTitle>Total Link Clicks</CardTitle>
             <CardDescription>{totalClicksDescription}</CardDescription>
           </CardHeader>
           <CardContent>
@@ -280,11 +408,25 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           </CardContent>
         </Card>
 
-        {totalClicks === 0 ? (
+        {subscriptionTier === 'PRO' ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Total Short Link Clicks</CardTitle>
+              <CardDescription>{totalClicksDescription}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold">{totalShortLinkClicks.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {!hasAnyAnalytics ? (
           <Card>
             <CardHeader>
               <CardTitle>No analytics yet</CardTitle>
-              <CardDescription>Share your profile to start tracking clicks.</CardDescription>
+              <CardDescription>
+                Share your profile (or short links) to start tracking clicks.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
@@ -296,7 +438,13 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           </Card>
         ) : null}
 
-        <AnalyticsCharts analytics={analytics} range={daysAgo} retentionDays={retentionDays} />
+        <AnalyticsCharts
+          analytics={analytics}
+          range={daysAgo}
+          retentionDays={retentionDays}
+          title="Link Click Trends"
+          description="Daily link click activity over the selected period"
+        />
 
         <div className="grid gap-6 md:grid-cols-2">
           <TopLinks links={topLinksData} />
@@ -304,13 +452,66 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <GeographicBreakdown countries={countries} />
+          <GeographicBreakdown
+            countries={countries}
+            title="Link Geographic Breakdown"
+            description="Link clicks by country"
+          />
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <DeviceBreakdown devices={devices} />
-          <ReferrerSources referrers={referrers} />
+          <DeviceBreakdown
+            devices={devices}
+            title="Link Device Breakdown"
+            description="Link clicks by device type"
+          />
+          <ReferrerSources
+            referrers={referrers}
+            title="Link Referrer Sources"
+            description="Where your link clicks are coming from"
+          />
         </div>
+
+        {subscriptionTier === 'PRO' ? (
+          <div className="space-y-6">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-bold">Short Link Analytics</h2>
+              <p className="text-muted-foreground text-sm">
+                Clicks, devices, and referrers for your short links
+              </p>
+            </div>
+
+            <AnalyticsCharts
+              analytics={shortLinkClicks}
+              range={daysAgo}
+              retentionDays={retentionDays}
+              title="Short Link Click Trends"
+              description="Daily short link click activity over the selected period"
+            />
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <TopShortLinks links={topShortLinksData} />
+              <GeographicBreakdown
+                countries={shortLinkCountries}
+                title="Short Link Geographic Breakdown"
+                description="Short link clicks by country"
+              />
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <DeviceBreakdown
+                devices={shortLinkDevices}
+                title="Short Link Device Breakdown"
+                description="Short link clicks by device type"
+              />
+              <ReferrerSources
+                referrers={shortLinkReferrers}
+                title="Short Link Referrer Sources"
+                description="Where your short link clicks are coming from"
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
     </AnimatedPage>
   );

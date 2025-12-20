@@ -17,28 +17,22 @@ import {
   SelectValue,
   toast,
 } from '@acme/ui';
-import { ThemeSettings } from '@/lib/theme-settings';
-import { ProfilePreview } from './profile-preview';
 import { useRouter } from 'next/navigation';
 
-interface Link {
-  id: string;
-  title: string;
-  url: string;
-}
+import {
+  ProfilePreview,
+  type PreviewLink,
+  type PreviewPage,
+  type PreviewProfile,
+} from '@/components/profile-preview';
+import { ThemeSettings } from '@/lib/theme-settings';
 
-interface Profile {
-  id: string;
-  slug: string;
-  displayName: string | null;
-  bio: string | null;
-  image: string | null;
-  themeSettings: ThemeSettings;
-}
+type DesignEditorProfile = PreviewProfile & { id: string };
 
 interface DesignEditorProps {
-  profile: Profile;
-  links: Link[];
+  profile: DesignEditorProfile;
+  links: PreviewLink[];
+  pages: PreviewPage[];
 }
 
 const themePresets = [
@@ -134,7 +128,7 @@ function getFontVariable(fontFamily?: string): string {
   return fontMap[fontFamily] || 'var(--font-outfit)';
 }
 
-export function DesignEditor({ profile, links }: DesignEditorProps) {
+export function DesignEditor({ profile, links, pages }: DesignEditorProps) {
   const router = useRouter();
   const [settings, setSettings] = useState<ThemeSettings>(profile.themeSettings);
   const [avatarUrl, setAvatarUrl] = useState(profile.image || '');
@@ -342,17 +336,24 @@ export function DesignEditor({ profile, links }: DesignEditorProps) {
         <Card>
           <CardHeader>
             <CardTitle>Live Preview</CardTitle>
-            <CardDescription>See how your profile looks</CardDescription>
+            <CardDescription>
+              See how your profile looks (matches your published profile)
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <ProfilePreview
-              profile={{
-                ...profile,
-                image: avatarUrl,
-              }}
-              links={links}
-              settings={settings}
-            />
+          <CardContent className="p-0">
+            <div className="max-h-[calc(100vh-220px)] overflow-auto">
+              <ProfilePreview
+                profile={{
+                  ...profile,
+                  image: avatarUrl || null,
+                  themeSettings: settings,
+                }}
+                links={links}
+                pages={pages}
+                showQr
+                className="min-h-0"
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
