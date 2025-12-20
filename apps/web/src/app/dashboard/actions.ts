@@ -7,6 +7,8 @@ import { requireAuth } from '@/lib/auth-helpers';
 import { createLinkSchema, reorderLinksSchema, updateLinkSchema } from '@/lib/validations/links';
 import { createProfileSchema, updateProfileSchema } from '@/lib/validations/profiles';
 import { slugify } from '@/lib/slugs';
+import type { Block, BlockContent, BlockType } from '@/types/blocks';
+import { BlockType } from '@/types/blocks';
 
 export async function createProfileAction(input: unknown) {
   const user = await requireAuth();
@@ -744,4 +746,244 @@ export async function deleteShortLinkAction(shortLinkId: string) {
 
   revalidatePath('/dashboard');
   return { ok: true as const };
+}
+
+// Block-related actions
+export async function createBlockAction(input: unknown) {
+  const user = await requireAuth();
+
+  // Since we don't have a createBlock schema yet, we'll do basic validation
+  const { linkId, type, order, content } = input as {
+    linkId: string;
+    type: BlockType;
+    order: number;
+    content: BlockContent;
+  };
+
+  if (!linkId || !type || content === undefined) {
+    return { ok: false as const, error: 'Missing required fields' };
+  }
+
+  // Verify the link belongs to the user
+  const link = await prisma.link.findFirst({
+    where: {
+      id: linkId,
+      profile: { userId: user.id, deletedAt: null },
+      deletedAt: null,
+    },
+    select: { id: true, profile: { select: { slug: true } } },
+  });
+
+  if (!link) {
+    return { ok: false as const, error: 'Link not found' };
+  }
+
+  const block = await prisma.block.create({
+    data: {
+      linkId,
+      type,
+      order,
+      content: content as any,
+    },
+  });
+
+  // Update the link to be of type BLOCK
+  await prisma.link.update({
+    where: { id: linkId },
+    data: { linkType: 'BLOCK' },
+  });
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/${link.profile.slug}`);
+
+  return {
+    ok: true as const,
+    block: {
+      ...block,
+      createdAt: block.createdAt.toISOString(),
+      updatedAt: block.updatedAt.toISOString(),
+    },
+  };
+}
+
+export async function updateBlockAction(blockId: string, input: unknown) {
+  const user = await requireAuth();
+
+  // Verify the block belongs to the user
+  const block = await prisma.block.findFirst({
+    where: {
+      id: blockId,
+      link: {
+        profile: { userId: user.id, deletedAt: null },
+        deletedAt: null,
+      },
+    },
+    select: {
+      id: true,
+      link: {
+        select: { profile: { select: { slug: true } } },
+      },
+    },
+  });
+
+  if (!block) {
+    return { ok: false as const, error: 'Block not found' };
+  }
+
+  const updates: any = {};
+  if ('order' in input) updates.order = input.order;
+  if ('content' in input) updates.content = input.content;
+
+  const updatedBlock = await prisma.block.update({
+    where: { id: blockId },
+    data: updates,
+  });
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/${block.link.profile.slug}`);
+
+  return {
+    ok: true as const,
+    block: {
+      ...updatedBlock,
+      createdAt: updatedBlock.createdAt.toISOString(),
+      updatedAt: updatedBlock.updatedAt.toISOString(),
+    },
+  };
+}
+
+export async function deleteBlockAction(blockId: string) {
+  const user = await requireAuth();
+
+  // Verify the block belongs to the user
+  const block = await prisma.block.findFirst({
+    where: {
+      id: blockId,
+      link: {
+        profile: { userId: user.id, deletedAt: null },
+        deletedAt: null,
+      },
+    },
+    select: {
+      id: true,
+      link: {
+        select: {
+          id: true,
+          profile: { select: { slug: true } },
+        },
+      },
+    },
+  });
+
+  if (!block) {
+    return { ok: false as const, error: 'Block not found' };
+  }
+
+  await prisma.block.delete({
+    where: { id: blockId },
+  });
+
+  // Check if the link still has blocks - if not, revert to URL type
+  const remainingBlocks = await prisma.block.count({
+    where: { linkId: block.link.id },
+  });
+
+  if (remainingBlocks === 0) {
+    await prisma.link.update({
+      where: { id: block.link.id },
+      data: { linkType: 'URL' },
+    });
+  }
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/${block.link.profile.slug}`);
+
+  return { ok: true as const };
+}
+
+export async function reorderBlocksAction(input: unknown) {
+  const user = await requireAuth();
+
+  const { linkId, orderedBlockIds } = input as {
+    linkId: string;
+    orderedBlockIds: string[];
+  };
+
+  if (!linkId || !Array.isArray(orderedBlockIds)) {
+    return { ok: false as const, error: 'Missing required fields' };
+  }
+
+  // Verify the link belongs to the user
+  const link = await prisma.link.findFirst({
+    where: {
+      id: linkId,
+      profile: { userId: user.id, deletedAt: null },
+      deletedAt: null,
+    },
+    select: { id: true, profile: { select: { slug: true } } },
+  });
+
+  if (!link) {
+    return { ok: false as const, error: 'Link not found' };
+  }
+
+  // Verify all blocks belong to this link
+  const blocks = await prisma.block.findMany({
+    where: {
+      linkId,
+      id: { in: orderedBlockIds },
+    },
+    select: { id: true },
+  });
+
+  if (blocks.length !== orderedBlockIds.length) {
+    return { ok: false as const, error: 'Invalid block list' };
+  }
+
+  await prisma.$transaction(
+    orderedBlockIds.map((id, index) =>
+      prisma.block.update({
+        where: { id },
+        data: { order: index },
+      }),
+    ),
+  );
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/${link.profile.slug}`);
+
+  return { ok: true as const };
+}
+
+// Get blocks for a link
+export async function getBlocksForLink(linkId: string) {
+  const user = await requireAuth();
+
+  // Verify the link belongs to the user
+  const link = await prisma.link.findFirst({
+    where: {
+      id: linkId,
+      profile: { userId: user.id, deletedAt: null },
+      deletedAt: null,
+    },
+    select: { id: true, profile: { select: { slug: true } } },
+  });
+
+  if (!link) {
+    return { ok: false as const, error: 'Link not found' };
+  }
+
+  const blocks = await prisma.block.findMany({
+    where: { linkId },
+    orderBy: { order: 'asc' },
+  });
+
+  return {
+    ok: true as const,
+    blocks: blocks.map((block) => ({
+      ...block,
+      createdAt: block.createdAt.toISOString(),
+      updatedAt: block.updatedAt.toISOString(),
+    })),
+  };
 }

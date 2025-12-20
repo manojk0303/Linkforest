@@ -19,7 +19,10 @@ module.exports = {
       },
     },
     {
-      files: ['apps/web/src/app/**/*.{js,jsx,ts,tsx}', 'apps/web/src/components/**/*.{js,jsx,ts,tsx}'],
+      files: [
+        'apps/web/src/app/**/*.{js,jsx,ts,tsx}',
+        'apps/web/src/components/**/*.{js,jsx,ts,tsx}',
+      ],
       rules: {
         'react/no-unescaped-entities': 'off',
       },

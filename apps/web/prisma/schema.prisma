@@ -59,6 +59,14 @@ enum LinkStatus {
 enum LinkType {
   URL
   COPY_FIELD
+  BLOCK
+}
+
+enum BlockType {
+  MARKDOWN
+  BUTTON
+  COPY_TEXT
+  EXPAND
 }
 
 
@@ -175,10 +183,27 @@ model Link {
   updatedAt DateTime @updatedAt
 
   profile   Profile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  blocks    Block[]
   analytics Analytics[]
 
   @@unique([profileId, slug])
   @@index([profileId, position])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  linkId    String
+  type      BlockType
+  order     Int
+  
+  content   Json
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId, order])
 }
 
 model Analytics {
