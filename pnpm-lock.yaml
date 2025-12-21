@@ -27,8 +27,8 @@ importers:
         specifier: latest
         version: 1.4.0
       '@hookform/resolvers':
-        specifier: 5.2.2
-        version: 5.2.2(react-hook-form@7.69.0(react@19.2.3))
+        specifier: 3.9.1
+        version: 3.9.1(react-hook-form@7.69.0(react@19.2.3))
       '@next-auth/prisma-adapter':
         specifier: 1.0.7
         version: 1.0.7(@prisma/client@7.2.0(prisma@7.2.0(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3))(typescript@5.9.3))(next-auth@4.24.13(@auth/core@0.34.3(nodemailer@7.0.11))(next@16.1.0(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(nodemailer@7.0.11)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))
@@ -186,8 +186,8 @@ importers:
         specifier: 4.0.16
         version: 4.0.16(@edge-runtime/vm@5.0.0)(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(@vitest/browser-preview@4.0.16)(@vitest/browser-webdriverio@4.0.16)(@vitest/ui@4.0.16)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@27.3.0)(yaml@2.8.2)
       zod:
-        specifier: 4.2.1
-        version: 4.2.1
+        specifier: 3.24.1
+        version: 3.24.1
     devDependencies:
       '@types/node':
         specifier: 25.0.3
@@ -244,8 +244,8 @@ importers:
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
       '@hookform/resolvers':
-        specifier: ^5.2.2
-        version: 5.2.2(react-hook-form@7.69.0(react@18.3.1))
+        specifier: ^3.9.1
+        version: 3.9.1(react-hook-form@7.69.0(react@18.3.1))
       '@next-auth/prisma-adapter':
         specifier: ^1.0.7
         version: 1.0.7(@prisma/client@5.22.0(prisma@5.22.0))(next-auth@4.24.13(@auth/core@0.34.3(nodemailer@7.0.11))(next@14.2.20(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(nodemailer@7.0.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
@@ -369,10 +369,10 @@ importers:
         version: 5.1.4(typescript@5.9.3)(vite@5.4.21(@types/node@20.19.27))
       vitest:
         specifier: ^2.1.8
-        version: 2.1.9(@edge-runtime/vm@5.0.0)(@types/node@20.19.27)(@vitest/ui@4.0.16)(happy-dom@20.0.11)(jsdom@25.0.1)
+        version: 2.1.9(@edge-runtime/vm@5.0.0)(@types/node@20.19.27)(@vitest/ui@4.0.16(vitest@4.0.16))(happy-dom@20.0.11)(jsdom@25.0.1)
       zod:
-        specifier: ^4.1.13
-        version: 4.2.1
+        specifier: ^3.24.1
+        version: 3.24.1
 
   packages/ui:
     dependencies:
@@ -1146,10 +1146,10 @@ packages:
     peerDependencies:
       hono: ^4
 
-  '@hookform/resolvers@5.2.2':
-    resolution: {integrity: sha512-A/IxlMLShx3KjV/HeTcTfaMxdwy690+L/ZADoeaTltLx+CVuzkeVIPuybK3jrRfw7YZnmdKsVVHAlEPIAEUNlA==}
+  '@hookform/resolvers@3.9.1':
+    resolution: {integrity: sha512-ud2HqmGBM0P0IABqoskKWI6PEf6ZDDBZkFqe2Vnl+mTHCEHzr3ISjjZyCwTjC/qpL25JC9aIDkloQejvMeq0ug==}
     peerDependencies:
-      react-hook-form: ^7.55.0
+      react-hook-form: ^7.0.0
 
   '@humanwhocodes/config-array@0.13.0':
     resolution: {integrity: sha512-DZLEEqFWQFiyK6h5YIeynKx7JlvCYWL0cImfSRXZ9l4Sg2efkFGTuFf6vzXjK1cq6IYkU+Eg/JizXw+TD2vRNw==}
@@ -6508,8 +6508,8 @@ packages:
     resolution: {integrity: sha512-zK7YHHz4ZXpW89AHXUPbQVGKI7uvkd3hzusTdotCg1UxyaVtg0zFJSTfW/Dq5f7OBBVnq6cZIaC8Ti4hb6dtCA==}
     engines: {node: '>= 14'}
 
-  zod@4.2.1:
-    resolution: {integrity: sha512-0wZ1IRqGGhMP76gLqz8EyfBXKk0J2qo2+H3fi4mcUP/KtTocoX08nmIAHl1Z2kJIZbZee8KOpBCSNPRgauucjw==}
+  zod@3.24.1:
+    resolution: {integrity: sha512-muH7gBL9sI1nciMZV67X5fTKKBLtwpZ5VBp1vsOQzj1MhrBZ4wlVCm3gedKZWLp0Oyel8sIGfeiz54Su+OVT+A==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -7398,14 +7398,12 @@ snapshots:
     dependencies:
       hono: 4.10.6
 
-  '@hookform/resolvers@5.2.2(react-hook-form@7.69.0(react@18.3.1))':
+  '@hookform/resolvers@3.9.1(react-hook-form@7.69.0(react@18.3.1))':
     dependencies:
-      '@standard-schema/utils': 0.3.0
       react-hook-form: 7.69.0(react@18.3.1)
 
-  '@hookform/resolvers@5.2.2(react-hook-form@7.69.0(react@19.2.3))':
+  '@hookform/resolvers@3.9.1(react-hook-form@7.69.0(react@19.2.3))':
     dependencies:
-      '@standard-schema/utils': 0.3.0
       react-hook-form: 7.69.0(react@19.2.3)
 
   '@humanwhocodes/config-array@0.13.0':
@@ -8700,7 +8698,7 @@ snapshots:
 
   '@radix-ui/rect@1.1.1': {}
 
-  '@reduxjs/toolkit@2.11.2(react-redux@9.2.0(@types/react@18.3.27)(react@18.3.1)(redux@5.0.1))(react@18.3.1)':
+  '@reduxjs/toolkit@2.11.2(react-redux@9.2.0(@types/react@19.2.7)(react@19.2.3)(redux@5.0.1))(react@18.3.1)':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@standard-schema/utils': 0.3.0
@@ -8710,7 +8708,7 @@ snapshots:
       reselect: 5.1.1
     optionalDependencies:
       react: 18.3.1
-      react-redux: 9.2.0(@types/react@18.3.27)(react@18.3.1)(redux@5.0.1)
+      react-redux: 9.2.0(@types/react@19.2.7)(react@19.2.3)(redux@5.0.1)
 
   '@reduxjs/toolkit@2.11.2(react-redux@9.2.0(@types/react@19.2.7)(react@19.2.3)(redux@5.0.1))(react@19.2.3)':
     dependencies:
@@ -12878,7 +12876,7 @@ snapshots:
 
   recharts@3.6.0(@types/react@18.3.27)(react-dom@18.3.1(react@18.3.1))(react-is@17.0.2)(react@18.3.1)(redux@5.0.1):
     dependencies:
-      '@reduxjs/toolkit': 2.11.2(react-redux@9.2.0(@types/react@18.3.27)(react@18.3.1)(redux@5.0.1))(react@18.3.1)
+      '@reduxjs/toolkit': 2.11.2(react-redux@9.2.0(@types/react@19.2.7)(react@19.2.3)(redux@5.0.1))(react@18.3.1)
       clsx: 2.1.1
       decimal.js-light: 2.5.1
       es-toolkit: 1.43.0
@@ -13883,7 +13881,7 @@ snapshots:
       jiti: 2.6.1
       yaml: 2.8.2
 
-  vitest@2.1.9(@edge-runtime/vm@5.0.0)(@types/node@20.19.27)(@vitest/ui@4.0.16)(happy-dom@20.0.11)(jsdom@25.0.1):
+  vitest@2.1.9(@edge-runtime/vm@5.0.0)(@types/node@20.19.27)(@vitest/ui@4.0.16(vitest@4.0.16))(happy-dom@20.0.11)(jsdom@25.0.1):
     dependencies:
       '@vitest/expect': 2.1.9
       '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@20.19.27))
@@ -14207,6 +14205,6 @@ snapshots:
       compress-commons: 6.0.2
       readable-stream: 4.7.0
 
-  zod@4.2.1: {}
+  zod@3.24.1: {}
 
   zwitch@2.0.4: {}
