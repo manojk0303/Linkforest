@@ -161,24 +161,26 @@ export function ProfileEditor({
     const optimistic = { ...profileState, ...patch };
     setProfileState(optimistic);
 
-    startTransition(async () => {
-      const result = await updateProfileAction(profile.id, {
-        slug: optimistic.slug,
-        displayName: optimistic.displayName,
-        bio: optimistic.bio,
-        image: optimistic.image,
-        status: optimistic.status,
-        themeSettings: optimistic.themeSettings,
-      });
-
-      if (!result.ok) {
-        toast({
-          title: 'Could not save profile',
-          description: result.error,
-          variant: 'destructive',
+    startTransition(() => {
+      (async () => {
+        const result = await updateProfileAction(profile.id, {
+          slug: optimistic.slug,
+          displayName: optimistic.displayName,
+          bio: optimistic.bio,
+          image: optimistic.image,
+          status: optimistic.status,
+          themeSettings: optimistic.themeSettings,
         });
-        router.refresh();
-      }
+
+        if (!result.ok) {
+          toast({
+            title: 'Could not save profile',
+            description: result.error,
+            variant: 'destructive',
+          });
+          router.refresh();
+        }
+      })();
     });
   }
 

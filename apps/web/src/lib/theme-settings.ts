@@ -8,6 +8,13 @@ export type ThemeSettings = {
   buttonRadius?: number;
   fontFamily?: string;
   customCss?: string;
+  // Additional theme properties
+  backgroundType?: 'solid' | 'gradient' | 'image';
+  gradientStart?: string;
+  gradientEnd?: string;
+  backgroundImage?: string;
+  buttonBackground?: string;
+  buttonBorderRadius?: number;
 };
 
 export const defaultThemeSettings: Required<

@@ -135,32 +135,34 @@ export function PagesSection({ pages, profileId }: PagesSectionProps) {
       return;
     }
 
-    startTransition(async () => {
-      const result = await createPageAction({
-        profileId,
-        title: title.trim(),
-        slug: slug.trim(),
-        icon: icon.trim() || null,
-        isPublished,
-      });
-
-      if (!result.ok) {
-        toast({
-          title: 'Could not create page',
-          description: result.error,
-          variant: 'destructive',
+    startTransition(() => {
+      (async () => {
+        const result = await createPageAction({
+          profileId,
+          title: title.trim(),
+          slug: slug.trim(),
+          icon: icon.trim() || null,
+          isPublished,
         });
-        return;
-      }
 
-      toast({
-        title: 'Page created',
-        description: 'Your page has been created successfully',
-      });
+        if (!result.ok) {
+          toast({
+            title: 'Could not create page',
+            description: result.error,
+            variant: 'destructive',
+          });
+          return;
+        }
 
-      resetForm();
-      setCreateOpen(false);
-      router.refresh();
+        toast({
+          title: 'Page created',
+          description: 'Your page has been created successfully',
+        });
+
+        resetForm();
+        setCreateOpen(false);
+        router.refresh();
+      })();
     });
   }
 
@@ -174,30 +176,32 @@ export function PagesSection({ pages, profileId }: PagesSectionProps) {
       return;
     }
 
-    startTransition(async () => {
-      const result = await updatePageAction(editingPage.id, {
-        title: title.trim(),
-        slug: slug.trim(),
-        icon: icon.trim() || null,
-        isPublished,
-      });
-
-      if (!result.ok) {
-        toast({
-          title: 'Could not update page',
-          description: result.error,
-          variant: 'destructive',
+    startTransition(() => {
+      (async () => {
+        const result = await updatePageAction(editingPage.id, {
+          title: title.trim(),
+          slug: slug.trim(),
+          icon: icon.trim() || null,
+          isPublished,
         });
-        return;
-      }
 
-      toast({
-        title: 'Page updated',
-        description: 'Your page has been updated successfully',
-      });
+        if (!result.ok) {
+          toast({
+            title: 'Could not update page',
+            description: result.error,
+            variant: 'destructive',
+          });
+          return;
+        }
 
-      closeEditDialog();
-      router.refresh();
+        toast({
+          title: 'Page updated',
+          description: 'Your page has been updated successfully',
+        });
+
+        closeEditDialog();
+        router.refresh();
+      })();
     });
   }
 
@@ -206,48 +210,52 @@ export function PagesSection({ pages, profileId }: PagesSectionProps) {
       return;
     }
 
-    startTransition(async () => {
-      const result = await deletePageAction(pageId);
+    startTransition(() => {
+      (async () => {
+        const result = await deletePageAction(pageId);
 
-      if (!result.ok) {
+        if (!result.ok) {
+          toast({
+            title: 'Could not delete page',
+            description: result.error,
+            variant: 'destructive',
+          });
+          return;
+        }
+
         toast({
-          title: 'Could not delete page',
-          description: result.error,
-          variant: 'destructive',
+          title: 'Page deleted',
+          description: 'The page has been deleted',
         });
-        return;
-      }
 
-      toast({
-        title: 'Page deleted',
-        description: 'The page has been deleted',
-      });
-
-      router.refresh();
+        router.refresh();
+      })();
     });
   }
 
   function handleTogglePublish(pageId: string, currentStatus: boolean, pageTitle: string) {
-    startTransition(async () => {
-      const result = await updatePageAction(pageId, {
-        isPublished: !currentStatus,
-      });
-
-      if (!result.ok) {
-        toast({
-          title: 'Could not update page',
-          description: result.error,
-          variant: 'destructive',
+    startTransition(() => {
+      (async () => {
+        const result = await updatePageAction(pageId, {
+          isPublished: !currentStatus,
         });
-        return;
-      }
 
-      toast({
-        title: `Page ${!currentStatus ? 'published' : 'unpublished'}`,
-        description: `"${pageTitle}" is now ${!currentStatus ? 'published' : 'unpublished'}`,
-      });
+        if (!result.ok) {
+          toast({
+            title: 'Could not update page',
+            description: result.error,
+            variant: 'destructive',
+          });
+          return;
+        }
 
-      router.refresh();
+        toast({
+          title: `Page ${!currentStatus ? 'published' : 'unpublished'}`,
+          description: `"${pageTitle}" is now ${!currentStatus ? 'published' : 'unpublished'}`,
+        });
+
+        router.refresh();
+      })();
     });
   }
 

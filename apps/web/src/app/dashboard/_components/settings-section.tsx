@@ -79,29 +79,31 @@ export function SettingsSection({ user, profile, profiles }: SettingsSectionProp
   const profilesUsedText = `${profiles.length}/5 profiles used`;
 
   function saveProfile(patch: Partial<EditorProfile>) {
-    startTransition(async () => {
-      const result = await updateProfileAction(profile.id, {
-        slug: profile.slug,
-        displayName: patch.displayName,
-        bio: patch.bio,
-        image: patch.image,
-        status: patch.status,
-        themeSettings: patch.themeSettings,
-      });
+    startTransition(() => {
+      (async () => {
+        const result = await updateProfileAction(profile.id, {
+          slug: profile.slug,
+          displayName: patch.displayName,
+          bio: patch.bio,
+          image: patch.image,
+          status: patch.status,
+          themeSettings: patch.themeSettings,
+        });
 
-      if (!result.ok) {
-        toast({
-          title: 'Could not save profile',
-          description: result.error,
-          variant: 'destructive',
-        });
-        router.refresh();
-      } else {
-        toast({
-          title: 'Profile saved',
-          description: 'Your changes have been saved',
-        });
-      }
+        if (!result.ok) {
+          toast({
+            title: 'Could not save profile',
+            description: result.error,
+            variant: 'destructive',
+          });
+          router.refresh();
+        } else {
+          toast({
+            title: 'Profile saved',
+            description: 'Your changes have been saved',
+          });
+        }
+      })();
     });
   }
 
@@ -123,63 +125,67 @@ export function SettingsSection({ user, profile, profiles }: SettingsSectionProp
   }
 
   function handleDeleteProfile() {
-    startTransition(async () => {
-      const result = await deleteProfileAction(profile.id);
+    startTransition(() => {
+      (async () => {
+        const result = await deleteProfileAction(profile.id);
 
-      if (!result.ok) {
+        if (!result.ok) {
+          toast({
+            title: 'Could not delete profile',
+            description: result.error,
+            variant: 'destructive',
+          });
+          return;
+        }
+
         toast({
-          title: 'Could not delete profile',
-          description: result.error,
-          variant: 'destructive',
+          title: 'Profile deleted',
+          description: 'Your profile has been deleted',
         });
-        return;
-      }
 
-      toast({
-        title: 'Profile deleted',
-        description: 'Your profile has been deleted',
-      });
-
-      // Redirect to dashboard or another profile
-      const otherProfile = profiles.find((p) => p.id !== profile.id);
-      if (otherProfile) {
-        window.location.href = `/dashboard?profile=${otherProfile.id}`;
-      } else {
-        window.location.href = '/dashboard';
-      }
+        // Redirect to dashboard or another profile
+        const otherProfile = profiles.find((p) => p.id !== profile.id);
+        if (otherProfile) {
+          window.location.href = `/dashboard?profile=${otherProfile.id}`;
+        } else {
+          window.location.href = '/dashboard';
+        }
+      })();
     });
   }
 
   function handleExport(format: 'links-csv' | 'full-json') {
-    startTransition(async () => {
-      try {
-        const result = await fetch(`/api/profiles/${profile.id}/export?format=${format}`);
-        if (!result.ok) {
-          throw new Error('Export failed');
+    startTransition(() => {
+      (async () => {
+        try {
+          const result = await fetch(`/api/profiles/${profile.id}/export?format=${format}`);
+          if (!result.ok) {
+            throw new Error('Export failed');
+          }
+
+          const blob = await result.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `profile-${profile.slug}.${format === 'links-csv' ? 'csv' : 'json'}`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+
+          toast({
+            title: 'Export started',
+            description: 'Your download should begin immediately.',
+          });
+          setExportOpen(false);
+        } catch (error) {
+          toast({
+            title: 'Export failed',
+            description: 'Something went wrong. Please try again.',
+            variant: 'destructive',
+          });
         }
-
-        const blob = await result.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `profile-${profile.slug}.${format === 'links-csv' ? 'csv' : 'json'}`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-
-        toast({
-          title: 'Export started',
-          description: 'Your download should begin immediately.',
-        });
-        setExportOpen(false);
-      } catch (error) {
-        toast({
-          title: 'Export failed',
-          description: 'Something went wrong. Please try again.',
-          variant: 'destructive',
-        });
-      }
+      })();
     });
   }
 

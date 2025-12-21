@@ -3,6 +3,9 @@
 import * as React from 'react';
 import Joyride, { type CallBackProps, STATUS, type Step } from 'react-joyride';
 
+// Type workaround for React 19 compatibility
+const JoyrideComponent = Joyride as any;
+
 const STORAGE_KEY = 'acme:onboarding:dashboard:v1';
 
 const steps: Step[] = [
@@ -50,7 +53,7 @@ export function DashboardOnboardingTour() {
   }, []);
 
   return (
-    <Joyride
+    <JoyrideComponent
       steps={steps}
       run={run}
       continuous

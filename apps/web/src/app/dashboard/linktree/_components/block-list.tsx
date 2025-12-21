@@ -28,7 +28,7 @@ interface BlockListProps {
   }>
 }
 
-const blockTypeLabels: Record<BlockType, string> = {
+const blockTypeLabels = {
   [BlockTypeEnum.LINK]: "Link Button",
   [BlockTypeEnum.SOCIAL]: "Social Icon",
   [BlockTypeEnum.PAGE]: "Page",
@@ -36,7 +36,7 @@ const blockTypeLabels: Record<BlockType, string> = {
   [BlockTypeEnum.COPY_TEXT]: "Copy Text",
   [BlockTypeEnum.BUTTON]: "Button",
   [BlockTypeEnum.MARKDOWN]: "Markdown",
-}
+} as const
 
 export function BlockList({ profileId, blocks, onBlocksChange, onSave, pages }: BlockListProps) {
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null)

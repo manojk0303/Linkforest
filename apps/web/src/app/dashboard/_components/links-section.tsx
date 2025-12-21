@@ -97,30 +97,32 @@ export function LinksSection({ shortLinks, isPro, profileSlug }: LinksSectionPro
       return;
     }
 
-    startTransition(async () => {
-      const result = await createShortLinkAction({
-        slug: slug.trim(),
-        targetUrl: targetUrl.trim(),
-        title: title.trim() || null,
-      });
-
-      if (!result.ok) {
-        toast({
-          title: 'Could not create short link',
-          description: result.error,
-          variant: 'destructive',
+    startTransition(() => {
+      (async () => {
+        const result = await createShortLinkAction({
+          slug: slug.trim(),
+          targetUrl: targetUrl.trim(),
+          title: title.trim() || null,
         });
-        return;
-      }
 
-      toast({
-        title: 'Short link created',
-        description: 'Your short link has been created successfully',
-      });
+        if (!result.ok) {
+          toast({
+            title: 'Could not create short link',
+            description: result.error,
+            variant: 'destructive',
+          });
+          return;
+        }
 
-      resetForm();
-      setCreateOpen(false);
-      router.refresh();
+        toast({
+          title: 'Short link created',
+          description: 'Your short link has been created successfully',
+        });
+
+        resetForm();
+        setCreateOpen(false);
+        router.refresh();
+      })();
     });
   }
 
@@ -143,30 +145,32 @@ export function LinksSection({ shortLinks, isPro, profileSlug }: LinksSectionPro
       return;
     }
 
-    startTransition(async () => {
-      const result = await updateShortLinkAction(editingLink.id, {
-        slug: slug.trim(),
-        targetUrl: targetUrl.trim(),
-        title: title.trim() || null,
-        isActive,
-      });
-
-      if (!result.ok) {
-        toast({
-          title: 'Could not update short link',
-          description: result.error,
-          variant: 'destructive',
+    startTransition(() => {
+      (async () => {
+        const result = await updateShortLinkAction(editingLink.id, {
+          slug: slug.trim(),
+          targetUrl: targetUrl.trim(),
+          title: title.trim() || null,
+          isActive,
         });
-        return;
-      }
 
-      toast({
-        title: 'Short link updated',
-        description: 'Your short link has been updated successfully',
-      });
+        if (!result.ok) {
+          toast({
+            title: 'Could not update short link',
+            description: result.error,
+            variant: 'destructive',
+          });
+          return;
+        }
 
-      closeEditDialog();
-      router.refresh();
+        toast({
+          title: 'Short link updated',
+          description: 'Your short link has been updated successfully',
+        });
+
+        closeEditDialog();
+        router.refresh();
+      })();
     });
   }
 
@@ -175,24 +179,26 @@ export function LinksSection({ shortLinks, isPro, profileSlug }: LinksSectionPro
       return;
     }
 
-    startTransition(async () => {
-      const result = await deleteShortLinkAction(linkId);
+    startTransition(() => {
+      (async () => {
+        const result = await deleteShortLinkAction(linkId);
 
-      if (!result.ok) {
+        if (!result.ok) {
+          toast({
+            title: 'Could not delete short link',
+            description: result.error,
+            variant: 'destructive',
+          });
+          return;
+        }
+
         toast({
-          title: 'Could not delete short link',
-          description: result.error,
-          variant: 'destructive',
+          title: 'Short link deleted',
+          description: 'The short link has been deleted',
         });
-        return;
-      }
 
-      toast({
-        title: 'Short link deleted',
-        description: 'The short link has been deleted',
-      });
-
-      router.refresh();
+        router.refresh();
+      })();
     });
   }
 
