@@ -9,7 +9,7 @@ import { createProfileSchema, updateProfileSchema } from '@/lib/validations/prof
 import { slugify } from '@/lib/slugs';
 import { createDefaultBlockContent } from '@/lib/block-types';
 import type { Block, BlockContent } from '@/types/blocks';
-import { BlockType } from '@/types/blocks';
+import { BlockParentType, BlockType } from '@/types/blocks';
 
 export async function createProfileAction(input: unknown) {
   const user = await requireAuth();
@@ -708,12 +708,307 @@ export async function deleteShortLinkAction(shortLinkId: string) {
   return { ok: true as const };
 }
 
+// Profile Element Actions
+export async function createProfileElementAction(input: {
+  profileId: string;
+  type: BlockType;
+  content?: BlockContent;
+  iconName?: string | null;
+  fontColor?: string | null;
+  bgColor?: string | null;
+  page?: {
+    title: string;
+    slug?: string;
+    icon?: string | null;
+    isPublished?: boolean;
+  };
+}) {
+  const user = await requireAuth();
+
+  const profile = await prisma.profile.findFirst({
+    where: { id: input.profileId, userId: user.id, deletedAt: null },
+    select: { id: true, slug: true },
+  });
+
+  if (!profile) {
+    return { ok: false as const, error: 'Profile not found' };
+  }
+
+  const maxOrder = await prisma.block.aggregate({
+    where: { parentType: 'PROFILE', parentId: profile.id },
+    _max: { order: true },
+  });
+
+  const nextOrder = (maxOrder._max.order ?? -1) + 1;
+
+  if (input.type === BlockType.PAGE) {
+    const rawTitle = input.page?.title?.trim() || 'Page';
+    const baseSlug = slugify(input.page?.slug?.trim() || rawTitle) || 'page';
+
+    let attempt = 0;
+    let uniqueSlug = baseSlug;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const existing = await prisma.page.findUnique({
+        where: { profileId_slug: { profileId: profile.id, slug: uniqueSlug } },
+        select: { id: true },
+      });
+
+      if (!existing) break;
+
+      attempt += 1;
+      uniqueSlug = `${baseSlug}-${attempt + 1}`;
+      if (attempt > 50) {
+        return { ok: false as const, error: 'Unable to generate unique page slug' };
+      }
+    }
+
+    const page = await prisma.page.create({
+      data: {
+        profileId: profile.id,
+        title: rawTitle,
+        slug: uniqueSlug,
+        icon: input.page?.icon ?? null,
+        isPublished: input.page?.isPublished ?? true,
+        content: '',
+        order: 0,
+      },
+    });
+
+    const block = await prisma.block.create({
+      data: {
+        parentType: 'PROFILE',
+        parentId: profile.id,
+        profileId: profile.id,
+        type: BlockType.PAGE,
+        order: nextOrder,
+        pageId: page.id,
+        content: {},
+      },
+    });
+
+    revalidatePath('/dashboard');
+    revalidatePath(`/${profile.slug}`);
+
+    return {
+      ok: true as const,
+      block: {
+        id: block.id,
+        type: BlockType.PAGE,
+        order: block.order,
+        parentId: block.parentId,
+        parentType: block.parentType as unknown as BlockParentType,
+        profileId: block.profileId,
+        pageId: block.pageId,
+        iconName: block.iconName,
+        fontColor: block.fontColor,
+        bgColor: block.bgColor,
+        content: block.content as unknown as BlockContent,
+        createdAt: block.createdAt.toISOString(),
+        updatedAt: block.updatedAt.toISOString(),
+        page: {
+          id: page.id,
+          title: page.title,
+          slug: page.slug,
+          icon: page.icon,
+          isPublished: page.isPublished,
+        } as any,
+      },
+    };
+  }
+
+  const content = input.content ?? createDefaultBlockContent(input.type);
+
+  const block = await prisma.block.create({
+    data: {
+      parentType: 'PROFILE',
+      parentId: profile.id,
+      profileId: profile.id,
+      type: input.type,
+      order: nextOrder,
+      iconName: input.iconName ?? null,
+      fontColor: input.fontColor ?? null,
+      bgColor: input.bgColor ?? null,
+      content: content as any,
+    },
+  });
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/${profile.slug}`);
+
+  return {
+    ok: true as const,
+    block: {
+      id: block.id,
+      type: block.type as unknown as BlockType,
+      order: block.order,
+      parentId: block.parentId,
+      parentType: block.parentType as unknown as BlockParentType,
+      profileId: block.profileId,
+      pageId: block.pageId,
+      iconName: block.iconName,
+      fontColor: block.fontColor,
+      bgColor: block.bgColor,
+      content: block.content as unknown as BlockContent,
+      createdAt: block.createdAt.toISOString(),
+      updatedAt: block.updatedAt.toISOString(),
+      page: null,
+    },
+  };
+}
+
+export async function updateProfileElementAction(
+  blockId: string,
+  input: {
+    content?: BlockContent;
+    iconName?: string | null;
+    fontColor?: string | null;
+    bgColor?: string | null;
+  },
+) {
+  const user = await requireAuth();
+
+  const existing = await prisma.block.findFirst({
+    where: {
+      id: blockId,
+      parentType: 'PROFILE',
+      profile: { userId: user.id, deletedAt: null },
+    },
+    select: {
+      id: true,
+      type: true,
+      profile: { select: { slug: true } },
+    },
+  });
+
+  if (!existing) {
+    return { ok: false as const, error: 'Element not found' };
+  }
+
+  const updated = await prisma.block.update({
+    where: { id: blockId },
+    data: {
+      content: input.content as any,
+      iconName: input.iconName,
+      fontColor: input.fontColor,
+      bgColor: input.bgColor,
+    },
+  });
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/${existing.profile.slug}`);
+
+  const content =
+    updated.content && typeof updated.content === 'object'
+      ? (updated.content as unknown as BlockContent)
+      : createDefaultBlockContent(updated.type as unknown as BlockType);
+
+  return {
+    ok: true as const,
+    block: {
+      id: updated.id,
+      type: updated.type as unknown as BlockType,
+      order: updated.order,
+      parentId: updated.parentId,
+      parentType: updated.parentType as unknown as BlockParentType,
+      profileId: updated.profileId,
+      pageId: updated.pageId,
+      iconName: updated.iconName,
+      fontColor: updated.fontColor,
+      bgColor: updated.bgColor,
+      content,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+      page: null,
+    },
+  };
+}
+
+export async function deleteProfileElementAction(blockId: string) {
+  const user = await requireAuth();
+
+  const existing = await prisma.block.findFirst({
+    where: {
+      id: blockId,
+      parentType: 'PROFILE',
+      profile: { userId: user.id, deletedAt: null },
+    },
+    select: {
+      id: true,
+      type: true,
+      pageId: true,
+      profile: { select: { slug: true } },
+    },
+  });
+
+  if (!existing) {
+    return { ok: false as const, error: 'Element not found' };
+  }
+
+  if (existing.type === 'PAGE' && existing.pageId) {
+    await prisma.page.delete({ where: { id: existing.pageId } });
+  } else {
+    await prisma.block.delete({ where: { id: existing.id } });
+  }
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/${existing.profile.slug}`);
+
+  return { ok: true as const };
+}
+
+export async function reorderProfileElementsAction(input: {
+  profileId: string;
+  orderedElementIds: string[];
+}) {
+  const user = await requireAuth();
+
+  const profile = await prisma.profile.findFirst({
+    where: { id: input.profileId, userId: user.id, deletedAt: null },
+    select: { id: true, slug: true },
+  });
+
+  if (!profile) {
+    return { ok: false as const, error: 'Profile not found' };
+  }
+
+  const elements = await prisma.block.findMany({
+    where: {
+      parentType: 'PROFILE',
+      parentId: profile.id,
+      id: { in: input.orderedElementIds },
+    },
+    select: { id: true },
+  });
+
+  if (elements.length !== input.orderedElementIds.length) {
+    return { ok: false as const, error: 'Invalid element list' };
+  }
+
+  await prisma.$transaction(
+    input.orderedElementIds.map((id, index) =>
+      prisma.block.update({
+        where: { id },
+        data: { order: index },
+      }),
+    ),
+  );
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/${profile.slug}`);
+
+  return { ok: true as const };
+}
+
 // Page Block Actions
 export async function createBlockAction(input: {
   pageId: string;
   type: BlockType;
   order: number;
   content: BlockContent;
+  iconName?: string | null;
+  fontColor?: string | null;
+  bgColor?: string | null;
 }) {
   const user = await requireAuth();
 
@@ -723,7 +1018,7 @@ export async function createBlockAction(input: {
       id: input.pageId,
       profile: { userId: user.id, deletedAt: null },
     },
-    select: { id: true, profile: { select: { slug: true } } },
+    select: { id: true, profileId: true, profile: { select: { slug: true } } },
   });
 
   if (!page) {
@@ -734,9 +1029,13 @@ export async function createBlockAction(input: {
     data: {
       parentType: 'PAGE',
       parentId: input.pageId,
+      profileId: page.profileId,
       pageId: input.pageId,
       type: input.type,
       order: input.order,
+      iconName: input.iconName ?? null,
+      fontColor: input.fontColor ?? null,
+      bgColor: input.bgColor ?? null,
       content: input.content as any,
     },
   });
@@ -752,6 +1051,9 @@ export async function updateBlockAction(
   input: {
     order?: number;
     content?: BlockContent;
+    iconName?: string | null;
+    fontColor?: string | null;
+    bgColor?: string | null;
   },
 ) {
   const user = await requireAuth();
@@ -781,6 +1083,9 @@ export async function updateBlockAction(
     where: { id: blockId },
     data: {
       order: input.order,
+      iconName: input.iconName,
+      fontColor: input.fontColor,
+      bgColor: input.bgColor,
       content: input.content as any,
     },
   });
@@ -836,7 +1141,7 @@ export async function getBlocksForPage(pageId: string) {
       id: pageId,
       profile: { userId: user.id, deletedAt: null },
     },
-    select: { id: true, profile: { select: { slug: true } } },
+    select: { id: true, profileId: true, profile: { select: { slug: true } } },
   });
 
   if (!page) {
@@ -844,7 +1149,10 @@ export async function getBlocksForPage(pageId: string) {
   }
 
   const blocks = await prisma.block.findMany({
-    where: { pageId },
+    where: {
+      parentType: 'PAGE',
+      parentId: pageId,
+    },
     orderBy: { order: 'asc' },
   });
 
@@ -857,11 +1165,18 @@ export async function getBlocksForPage(pageId: string) {
     return {
       id: block.id,
       type: block.type as unknown as BlockType,
-      content,
       order: block.order,
+      parentId: block.parentId,
+      parentType: block.parentType as unknown as BlockParentType,
+      profileId: block.profileId ?? page.profileId,
       pageId: block.pageId,
+      iconName: block.iconName,
+      fontColor: block.fontColor,
+      bgColor: block.bgColor,
+      content,
       createdAt: block.createdAt.toISOString(),
       updatedAt: block.updatedAt.toISOString(),
+      page: null,
     };
   });
 

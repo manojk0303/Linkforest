@@ -35,7 +35,7 @@ import {
 
 import type { EditorPage } from './profile-editor';
 import { BlockEditor } from './block-editor';
-import type { Block } from '@/types/blocks';
+import { BlockParentType, BlockType, type Block } from '@/types/blocks';
 import {
   createPageAction,
   updatePageAction,
@@ -519,7 +519,17 @@ export function PagesSection({ pages, profileId }: PagesSectionProps) {
             <DialogDescription>Add and arrange blocks to build your page content</DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            {editingPage && <BlockEditor blocks={blocks} onBlocksChange={setBlocks} />}
+            {editingPage && (
+              <BlockEditor
+                blocks={blocks}
+                onBlocksChange={setBlocks}
+                parentType={BlockParentType.PAGE}
+                parentId={editingPage.id}
+                profileId={profileId}
+                pageId={editingPage.id}
+                allowedTypes={[BlockType.BUTTON, BlockType.MARKDOWN, BlockType.EXPAND, BlockType.COPY_TEXT]}
+              />
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeBlockEditor}>

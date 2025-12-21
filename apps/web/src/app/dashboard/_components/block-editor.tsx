@@ -47,6 +47,11 @@ const blockTypeIcons = {
 interface BlockEditorProps {
   blocks: Block[];
   onBlocksChange: (blocks: Block[]) => void;
+  parentId: string;
+  parentType: Block['parentType'];
+  profileId?: string | null;
+  pageId?: string | null;
+  allowedTypes?: BlockType[];
   className?: string;
 }
 
@@ -63,7 +68,16 @@ interface BlockFormData {
   content: BlockContent;
 }
 
-export function BlockEditor({ blocks, onBlocksChange, className }: BlockEditorProps) {
+export function BlockEditor({
+  blocks,
+  onBlocksChange,
+  parentId,
+  parentType,
+  profileId,
+  pageId,
+  allowedTypes,
+  className,
+}: BlockEditorProps) {
   const [state, setState] = useState<BlockEditorState>({
     selectedBlockId: null,
     addBlockOpen: false,
@@ -81,12 +95,19 @@ export function BlockEditor({ blocks, onBlocksChange, className }: BlockEditorPr
   const handleAddBlock = (type: BlockType) => {
     const newBlock: Block = {
       id: `temp-${Date.now()}`, // Temporary ID, will be replaced on server
-      pageId: '', // Will be set by parent component
       type,
       order: blocks.length,
+      parentId,
+      parentType,
+      profileId: profileId ?? null,
+      pageId: pageId ?? null,
+      iconName: null,
+      fontColor: null,
+      bgColor: null,
       content: createDefaultBlockContent(type),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      page: null,
     };
 
     const updatedBlocks = reorderBlocks([...blocks, newBlock]);
@@ -161,7 +182,7 @@ export function BlockEditor({ blocks, onBlocksChange, className }: BlockEditorPr
               <CardTitle className="text-sm">Add New Block</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {Object.values(BlockTypeEnum).map((type) => {
+              {(allowedTypes ?? Object.values(BlockTypeEnum)).map((type) => {
                 const config = getBlockTypeConfig(type);
                 const IconComponent =
                   blockTypeIcons[config.icon as keyof typeof blockTypeIcons] ?? FileText;

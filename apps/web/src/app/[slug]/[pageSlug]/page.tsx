@@ -4,10 +4,12 @@ import Link from 'next/link';
 
 import { prisma } from '@/lib/prisma';
 import { normalizeThemeSettings } from '@/lib/theme-settings';
+import { createDefaultBlockContent } from '@/lib/block-types';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { BlockRenderer } from '@/components/block-renderer';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import type { Block as UiBlock, BlockContent, BlockParentType, BlockType } from '@/types/blocks';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,6 +94,30 @@ export default async function PagePage({ params }: { params: { slug: string; pag
   const theme = normalizeThemeSettings(page.profile.themeSettings);
   const PageIcon = resolveLucideIcon(page.icon);
 
+  const blocks: UiBlock[] = page.blocks.map((block) => {
+    const content =
+      block.content && typeof block.content === 'object'
+        ? (block.content as unknown as BlockContent)
+        : createDefaultBlockContent(block.type as unknown as BlockType);
+
+    return {
+      id: block.id,
+      type: block.type as unknown as BlockType,
+      order: block.order,
+      parentId: block.parentId,
+      parentType: block.parentType as unknown as BlockParentType,
+      profileId: block.profileId,
+      pageId: block.pageId,
+      iconName: block.iconName,
+      fontColor: block.fontColor,
+      bgColor: block.bgColor,
+      content,
+      createdAt: block.createdAt.toISOString(),
+      updatedAt: block.updatedAt.toISOString(),
+      page: null,
+    };
+  });
+
   return (
     <div
       className="min-h-screen"
@@ -135,18 +161,7 @@ export default async function PagePage({ params }: { params: { slug: string; pag
               </p>
             </div>
           ) : (
-            page.blocks.map((block) => (
-              <BlockRenderer
-                key={block.id}
-                block={{
-                  ...block,
-                  content: block.content as any, // Type assertion for compatibility
-                  createdAt: block.createdAt.toISOString(),
-                  updatedAt: block.updatedAt.toISOString(),
-                  type: block.type as any, // Type assertion for compatibility
-                }}
-              />
-            ))
+            blocks.map((block) => <BlockRenderer key={block.id} block={block} />)
           )}
         </div>
       </main>
