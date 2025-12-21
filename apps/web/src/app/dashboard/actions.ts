@@ -9,7 +9,7 @@ import { createProfileSchema, updateProfileSchema } from '@/lib/validations/prof
 import { slugify } from '@/lib/slugs';
 import { createDefaultBlockContent } from '@/lib/block-types';
 import type { Block, BlockContent } from '@/types/blocks';
-import { BlockType } from '@/types/blocks';
+import { BlockParentType, BlockType } from '@/types/blocks';
 
 export async function createProfileAction(input: unknown) {
   const user = await requireAuth();
@@ -723,7 +723,7 @@ export async function createBlockAction(input: {
       id: input.pageId,
       profile: { userId: user.id, deletedAt: null },
     },
-    select: { id: true, profile: { select: { slug: true } } },
+    select: { id: true, profileId: true, profile: { select: { slug: true } } },
   });
 
   if (!page) {
@@ -734,6 +734,7 @@ export async function createBlockAction(input: {
     data: {
       parentType: 'PAGE',
       parentId: input.pageId,
+      profileId: page.profileId,
       pageId: input.pageId,
       type: input.type,
       order: input.order,
@@ -859,7 +860,13 @@ export async function getBlocksForPage(pageId: string) {
       type: block.type as unknown as BlockType,
       content,
       order: block.order,
+      parentId: block.parentId,
+      parentType: block.parentType as unknown as BlockParentType,
+      profileId: block.profileId,
       pageId: block.pageId,
+      iconName: block.iconName,
+      fontColor: block.fontColor,
+      bgColor: block.bgColor,
       createdAt: block.createdAt.toISOString(),
       updatedAt: block.updatedAt.toISOString(),
     };

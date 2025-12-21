@@ -35,7 +35,7 @@ import {
 
 import type { EditorPage } from './profile-editor';
 import { BlockEditor } from './block-editor';
-import type { Block } from '@/types/blocks';
+import { BlockParentType, BlockType, type Block } from '@/types/blocks';
 import {
   createPageAction,
   updatePageAction,
@@ -69,6 +69,7 @@ export function PagesSection({ pages, profileId }: PagesSectionProps) {
 
   // Block editor state
   const [blocks, setBlocks] = useState<Block[]>([]);
+  const [originalBlockIds, setOriginalBlockIds] = useState<string[]>([]);
 
   function resetForm() {
     setTitle('');
@@ -99,8 +100,10 @@ export function PagesSection({ pages, profileId }: PagesSectionProps) {
       const result = await getBlocksForPage(page.id);
       if (result.ok) {
         setBlocks(result.blocks);
+        setOriginalBlockIds(result.blocks.map((b) => b.id));
       } else {
         setBlocks([]);
+        setOriginalBlockIds([]);
         toast({
           title: 'Error loading blocks',
           description: result.error,
@@ -109,6 +112,7 @@ export function PagesSection({ pages, profileId }: PagesSectionProps) {
       }
     } catch (error) {
       setBlocks([]);
+      setOriginalBlockIds([]);
       toast({
         title: 'Error loading blocks',
         description: 'Something went wrong. Please try again.',
@@ -123,6 +127,7 @@ export function PagesSection({ pages, profileId }: PagesSectionProps) {
     setBlockEditorOpen(false);
     setEditingPage(null);
     setBlocks([]);
+    setOriginalBlockIds([]);
   }
 
   function handleCreatePage() {
@@ -255,6 +260,10 @@ export function PagesSection({ pages, profileId }: PagesSectionProps) {
     if (!editingPage) return;
 
     try {
+      const removedBlockIds = originalBlockIds.filter(
+        (id) => !updatedBlocks.some((block) => block.id === id),
+      );
+
       // Save each block
       for (const block of updatedBlocks) {
         if (block.id.startsWith('temp-')) {
@@ -274,6 +283,11 @@ export function PagesSection({ pages, profileId }: PagesSectionProps) {
         }
       }
 
+      // Delete blocks removed in the editor
+      for (const blockId of removedBlockIds) {
+        await deleteBlockAction(blockId);
+      }
+
       toast({
         title: 'Blocks saved',
         description: 'Your block changes have been saved',
@@ -289,8 +303,6 @@ export function PagesSection({ pages, profileId }: PagesSectionProps) {
       });
     }
   }
-
-  const pageUrl = (slug: string) => `${window.location.origin}/[profile]/${slug}`;
 
   return (
     <Card>
@@ -519,7 +531,22 @@ export function PagesSection({ pages, profileId }: PagesSectionProps) {
             <DialogDescription>Add and arrange blocks to build your page content</DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            {editingPage && <BlockEditor blocks={blocks} onBlocksChange={setBlocks} />}
+            {editingPage ? (
+              <BlockEditor
+                blocks={blocks}
+                onBlocksChange={setBlocks}
+                parentType={BlockParentType.PAGE}
+                parentId={editingPage.id}
+                profileId={profileId}
+                pageId={editingPage.id}
+                allowedTypes={[
+                  BlockType.MARKDOWN,
+                  BlockType.BUTTON,
+                  BlockType.COPY_TEXT,
+                  BlockType.EXPAND,
+                ]}
+              />
+            ) : null}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeBlockEditor}>

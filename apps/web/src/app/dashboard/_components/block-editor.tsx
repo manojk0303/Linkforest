@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import {
   Plus,
   GripVertical,
@@ -24,7 +24,7 @@ import { Switch } from '@acme/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '@acme/ui';
 import { toast } from '@acme/ui';
 
-import type { Block, BlockType, BlockContent } from '@/types/blocks';
+import { BlockParentType, type Block, type BlockType, type BlockContent } from '@/types/blocks';
 import {
   createDefaultBlockContent,
   validateBlockContent,
@@ -47,6 +47,11 @@ const blockTypeIcons = {
 interface BlockEditorProps {
   blocks: Block[];
   onBlocksChange: (blocks: Block[]) => void;
+  parentType: BlockParentType;
+  parentId: string;
+  profileId?: string | null;
+  pageId?: string | null;
+  allowedTypes?: BlockType[];
   className?: string;
 }
 
@@ -57,20 +62,22 @@ interface BlockEditorState {
   previewMode: boolean;
 }
 
-// Block Form Data
-interface BlockFormData {
-  type: BlockType;
-  content: BlockContent;
-}
-
-export function BlockEditor({ blocks, onBlocksChange, className }: BlockEditorProps) {
+export function BlockEditor({
+  blocks,
+  onBlocksChange,
+  parentType,
+  parentId,
+  profileId,
+  pageId,
+  allowedTypes,
+  className,
+}: BlockEditorProps) {
   const [state, setState] = useState<BlockEditorState>({
     selectedBlockId: null,
     addBlockOpen: false,
     previewMode: false,
   });
 
-  const [isPending, startTransition] = useTransition();
 
   // Get selected block
   const selectedBlock = state.selectedBlockId
@@ -81,7 +88,10 @@ export function BlockEditor({ blocks, onBlocksChange, className }: BlockEditorPr
   const handleAddBlock = (type: BlockType) => {
     const newBlock: Block = {
       id: `temp-${Date.now()}`, // Temporary ID, will be replaced on server
-      pageId: '', // Will be set by parent component
+      parentId,
+      parentType,
+      profileId: profileId ?? null,
+      pageId: pageId ?? null,
       type,
       order: blocks.length,
       content: createDefaultBlockContent(type),
@@ -161,7 +171,7 @@ export function BlockEditor({ blocks, onBlocksChange, className }: BlockEditorPr
               <CardTitle className="text-sm">Add New Block</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {Object.values(BlockTypeEnum).map((type) => {
+              {(allowedTypes ?? Object.values(BlockTypeEnum)).map((type) => {
                 const config = getBlockTypeConfig(type);
                 const IconComponent =
                   blockTypeIcons[config.icon as keyof typeof blockTypeIcons] ?? FileText;
