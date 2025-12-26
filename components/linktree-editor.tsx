@@ -50,7 +50,7 @@ export function LinktreeEditor({ user: initialUser }: LinktreeEditorProps) {
               <code className="px-2 py-1 bg-muted rounded text-xs">{profileUrl}</code>
             </div>
             <Button asChild variant="outline" size="sm">
-              <Link href={`/${user.username}`} target="_blank">
+              <Link href={`${profileUrl}`} target="_blank">
                 <ExternalLink className="size-4 mr-2" />
                 View
               </Link>
