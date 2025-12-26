@@ -36,7 +36,7 @@ export function LinktreeEditor({ user: initialUser }: LinktreeEditorProps) {
       })
   }
 
-  const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "")}/${user.username}`
+  const profileUrl = `${user.username}.${process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "")}`
 
   return (
     <div className="h-screen flex flex-col bg-background">
