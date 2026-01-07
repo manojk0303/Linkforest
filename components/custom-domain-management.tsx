@@ -101,6 +101,14 @@ export function CustomDomainManagement({ user: initialUser }: CustomDomainManage
       const data = await response.json()
       if (data.user) {
         setUser(data.user)
+        setRootDomainMode(data.user.root_domain_mode || "bio")
+        setRootDomainRedirectUrl(data.user.root_domain_redirect_url || "")
+        setUseDomainForShortlinks(data.user.use_domain_for_shortlinks ?? true)
+        console.log("[v0] Refreshed user data:", {
+          mode: data.user.root_domain_mode,
+          redirectUrl: data.user.root_domain_redirect_url,
+          useDomain: data.user.use_domain_for_shortlinks,
+        })
       }
     } catch (error) {
       console.error("Failed to refresh user data:", error)
@@ -338,7 +346,6 @@ export function CustomDomainManagement({ user: initialUser }: CustomDomainManage
     const prevMode = rootDomainMode
     setRootDomainMode(newMode)
 
-    // User needs to enter the redirect URL and click "Save Redirect URL"
     if (newMode === "redirect") {
       return
     }

@@ -89,6 +89,11 @@ export function ShortlinksAnalytics({ dateRange }: ShortlinksAnalyticsProps) {
   }
 
   const fetchDetailedAnalytics = async (linkId: string) => {
+    if (!linkId || linkId === "undefined") {
+      console.error("[v0] Invalid linkId:", linkId)
+      return
+    }
+
     setDetailedLoading(true)
 
     try {
@@ -97,6 +102,7 @@ export function ShortlinksAnalytics({ dateRange }: ShortlinksAnalyticsProps) {
         endDate: dateRange.endDate,
       })
 
+      console.log("[v0] Fetching detailed analytics for:", linkId)
       const response = await fetch(`/api/insights/shortlinks/${linkId}?${params}`)
       const data = await response.json()
 
@@ -104,9 +110,11 @@ export function ShortlinksAnalytics({ dateRange }: ShortlinksAnalyticsProps) {
         setDetailedAnalytics(data)
       } else {
         console.error("Invalid detailed analytics structure:", data)
+        setError(data.error || "Failed to load detailed analytics")
       }
     } catch (error) {
       console.error("Failed to fetch detailed analytics:", error)
+      setError("Failed to load detailed analytics")
     } finally {
       setDetailedLoading(false)
     }
@@ -495,12 +503,18 @@ export function ShortlinksAnalytics({ dateRange }: ShortlinksAnalyticsProps) {
           <div className="space-y-3">
             {topLinks.length > 0 ? (
               topLinks.map((link: any, index: number) => {
+                const linkId = link.id || link.short_code
+                console.log("[v0] Rendering link:", { id: linkId, short_code: link.short_code })
+
                 const percentage = totalClicks > 0 ? (link.total_clicks / totalClicks) * 100 : 0
                 return (
                   <div
-                    key={link.id}
+                    key={linkId}
                     className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
-                    onClick={() => setSelectedLink(link.id)}
+                    onClick={() => {
+                      console.log("[v0] Clicked link:", linkId)
+                      setSelectedLink(linkId)
+                    }}
                   >
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div className="flex-1 min-w-0 space-y-1.5">
